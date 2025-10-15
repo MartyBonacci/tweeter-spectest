@@ -89,7 +89,7 @@ describe('TweetComposer', () => {
 
       const counter = screen.getByText('50 / 140');
       expect(counter).toHaveClass('text-gray-600');
-      expect(counter).not.toHaveClass('text-yellow-700');
+      expect(counter).not.toHaveClass('text-yellow-400');
       expect(counter).not.toHaveClass('text-red-600');
     });
 
@@ -102,7 +102,7 @@ describe('TweetComposer', () => {
       await user.type(textarea, 'A'.repeat(120));
 
       const counter = screen.getByText('120 / 140');
-      expect(counter).toHaveClass('text-yellow-700');
+      expect(counter).toHaveClass('text-yellow-400');
       expect(counter).not.toHaveClass('text-gray-600');
       expect(counter).not.toHaveClass('text-red-600');
     });
@@ -116,7 +116,7 @@ describe('TweetComposer', () => {
       await user.type(textarea, 'A'.repeat(135));
 
       const counter = screen.getByText('135 / 140');
-      expect(counter).toHaveClass('text-yellow-700');
+      expect(counter).toHaveClass('text-yellow-400');
     });
 
     it('should show exceeded red color at exactly 140 characters', async () => {
@@ -130,7 +130,7 @@ describe('TweetComposer', () => {
       const counter = screen.getByText('140 / 140');
       expect(counter).toHaveClass('text-red-600');
       expect(counter).not.toHaveClass('text-gray-600');
-      expect(counter).not.toHaveClass('text-yellow-700');
+      expect(counter).not.toHaveClass('text-yellow-400');
     });
 
     it('should show exceeded red color over 140 characters', async () => {
@@ -294,7 +294,7 @@ describe('TweetComposer', () => {
       await user.type(textarea, 'A'.repeat(139));
 
       const counter = screen.getByText('139 / 140');
-      expect(counter).toHaveClass('text-yellow-700'); // Warning
+      expect(counter).toHaveClass('text-yellow-400'); // Warning
     });
 
     it('should handle very long text (200+ characters)', async () => {
@@ -349,7 +349,7 @@ describe('TweetComposer', () => {
       // Type to 120: yellow, enabled
       await user.clear(textarea);
       await user.type(textarea, 'A'.repeat(120));
-      expect(screen.getByText('120 / 140')).toHaveClass('text-yellow-700');
+      expect(screen.getByText('120 / 140')).toHaveClass('text-yellow-400');
       expect(button).not.toBeDisabled();
 
       // Type to 140: red, enabled
