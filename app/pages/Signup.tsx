@@ -39,12 +39,12 @@ export async function action({ request }: ActionFunctionArgs) {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include', // CRITICAL: Allow cookies to be set cross-origin
       body: JSON.stringify({
         username: username.toString(),
         email: email.toString(),
         password: password.toString(),
       }),
-      credentials: 'include', // Include cookies
     });
 
     const data = await response.json() as { error?: string; field?: string; user?: unknown };
@@ -57,8 +57,18 @@ export async function action({ request }: ActionFunctionArgs) {
       };
     }
 
-    // Success - redirect to feed
-    return redirect('/feed');
+    // SUCCESS: Forward the Set-Cookie header from API to browser
+    // React Router actions run server-side, so we need to forward cookies manually
+    const setCookie = response.headers.get('set-cookie');
+
+    // Create a redirect response with Set-Cookie header
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: '/feed',
+        ...(setCookie ? { 'Set-Cookie': setCookie } : {}),
+      },
+    });
   } catch (error) {
     console.error('Signup error:', error);
     return {

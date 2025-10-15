@@ -48,10 +48,18 @@ router.put('/:username', async (req: Request, res: Response) => {
 
   const { username } = req.params;
   const userId = req.user.userId;
-  const sessionUsername = req.user.username;
+
+  // Get current user's username from database for authorization check
+  const [currentUser] = await db`
+    SELECT username FROM profiles WHERE id = ${userId}
+  `;
+
+  if (!currentUser) {
+    return res.status(404).json({ error: 'User not found' });
+  }
 
   // Authorization check: User can only update their own profile
-  if (sessionUsername.toLowerCase() !== username.toLowerCase()) {
+  if (currentUser.username.toLowerCase() !== username.toLowerCase()) {
     return res
       .status(403)
       .json({ error: 'You can only update your own profile' });

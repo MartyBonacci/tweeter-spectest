@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { getEnv } from '../config/env.js';
 import { getDb } from '../db/connection.js';
 import { runMigrations } from '../db/migrate.js';

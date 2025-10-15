@@ -1,11 +1,11 @@
 import { TweetCard } from './TweetCard';
-import type { TweetWithAuthor } from '../../src/types/tweet';
+import type { TweetWithAuthorAndLikes } from '../../src/types/tweet';
 
 /**
  * List of tweets with empty state
  * Displays tweets in chronological order
  */
-export function TweetList({ tweets }: { tweets: TweetWithAuthor[] }) {
+export function TweetList({ tweets }: { tweets: TweetWithAuthorAndLikes[] }) {
   // Empty state
   if (tweets.length === 0) {
     return (

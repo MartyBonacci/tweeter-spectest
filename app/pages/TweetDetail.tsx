@@ -6,21 +6,26 @@
 import { useLoaderData } from 'react-router';
 import type { LoaderFunctionArgs } from 'react-router';
 import { TweetCard } from '../components/TweetCard';
-import type { TweetWithAuthor } from '../../src/types/tweet';
+import type { TweetWithAuthorAndLikes } from '../../src/types/tweet';
 
 /**
  * Tweet detail loader - fetches single tweet by ID
  */
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ request, params }: LoaderFunctionArgs) {
   const { id } = params;
 
   if (!id) {
     throw new Response('Tweet ID required', { status: 400 });
   }
 
+  // Extract cookies to get like status
+  const cookie = request.headers.get('Cookie') || '';
+
   try {
     const response = await fetch(`http://localhost:3000/api/tweets/${id}`, {
-      credentials: 'include',
+      headers: {
+        'Cookie': cookie,
+      },
     });
 
     if (response.status === 404) {
@@ -31,7 +36,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
       throw new Error('Failed to fetch tweet');
     }
 
-    const data = (await response.json()) as { tweet: TweetWithAuthor };
+    const data = (await response.json()) as { tweet: TweetWithAuthorAndLikes };
 
     // Convert date string to Date object
     const tweet = {
@@ -50,7 +55,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
 }
 
 export default function TweetDetail() {
-  const { tweet } = useLoaderData<{ tweet: TweetWithAuthor }>();
+  const { tweet } = useLoaderData<{ tweet: TweetWithAuthorAndLikes }>();
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
@@ -77,7 +82,7 @@ export default function TweetDetail() {
   );
 }
 
-export function meta({ data }: { data?: { tweet?: TweetWithAuthor } }) {
+export function meta({ data }: { data?: { tweet?: TweetWithAuthorAndLikes } }) {
   const tweetContent = data?.tweet?.content || 'Tweet';
   const truncated = tweetContent.length > 60 ? tweetContent.substring(0, 60) + '...' : tweetContent;
 

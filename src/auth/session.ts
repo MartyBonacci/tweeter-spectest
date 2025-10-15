@@ -35,14 +35,19 @@ export function createSession(
   const attributes = [
     `auth_token=${token}`,
     `Max-Age=${COOKIE_MAX_AGE}`,
-    `Domain=${cookieDomain}`,
     'Path=/',
     'HttpOnly',
-    'SameSite=Lax',
   ];
 
-  // Add Secure flag in production only (requires HTTPS)
   if (isProduction) {
+    // Production: use domain, SameSite=Lax, and Secure
+    attributes.push(`Domain=${cookieDomain}`);
+    attributes.push('SameSite=Lax');
+    attributes.push('Secure');
+  } else {
+    // Development: no domain (host-only), SameSite=None for cross-origin
+    // SameSite=None normally requires Secure, but browsers allow it for localhost
+    attributes.push('SameSite=None');
     attributes.push('Secure');
   }
 
@@ -56,17 +61,27 @@ export function createSession(
  * Factory function that generates cookie header to clear session
  *
  * @param cookieDomain - Domain for cookie (must match creation domain)
+ * @param isProduction - Whether app is running in production
  * @returns Set-Cookie header that clears the auth token
  */
-export function destroySession(cookieDomain: string): string {
+export function destroySession(cookieDomain: string, isProduction: boolean = false): string {
   const attributes = [
     'auth_token=',
     'Max-Age=0',
-    `Domain=${cookieDomain}`,
     'Path=/',
     'HttpOnly',
-    'SameSite=Lax',
   ];
+
+  if (isProduction) {
+    // Production: use domain, SameSite=Lax, and Secure
+    attributes.push(`Domain=${cookieDomain}`);
+    attributes.push('SameSite=Lax');
+    attributes.push('Secure');
+  } else {
+    // Development: no domain (host-only), SameSite=None for cross-origin
+    attributes.push('SameSite=None');
+    attributes.push('Secure');
+  }
 
   return attributes.join('; ');
 }

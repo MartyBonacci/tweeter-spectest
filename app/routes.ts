@@ -1,5 +1,5 @@
 import type { RouteConfig } from '@react-router/dev/routes';
-import { index, route } from '@react-router/dev/routes';
+import { index, route, layout } from '@react-router/dev/routes';
 
 /**
  * Programmatic routing configuration for React Router v7
@@ -12,10 +12,16 @@ export default [
   // Authentication routes
   route('/signup', 'pages/Signup.tsx'),
   route('/signin', 'pages/Signin.tsx'),
+  route('/signout', 'pages/Signout.tsx'),
 
   // Protected routes (require authentication)
   route('/feed', 'pages/Feed.tsx'),
 
   // Tweet routes
   route('/tweets/:id', 'pages/TweetDetail.tsx'),
+  route('/tweets/:id/like', 'pages/LikeAction.tsx'),
+
+  // Profile routes
+  route('/profile/:username', 'pages/Profile.tsx'),
+  route('/profile/:username/edit', 'pages/ProfileEdit.tsx'),
 ] satisfies RouteConfig;

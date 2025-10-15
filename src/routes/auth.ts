@@ -161,7 +161,7 @@ export function createAuthRouter(
   router.post('/signout', (req: Request, res: Response) => {
     try {
       // Clear session cookie
-      const cookie = destroySession(cookieDomain);
+      const cookie = destroySession(cookieDomain, isProduction);
 
       res.setHeader('Set-Cookie', cookie);
       return res.status(200).json({
@@ -169,6 +169,56 @@ export function createAuthRouter(
       });
     } catch (error) {
       console.error('Signout error:', error);
+      return res.status(500).json({
+        error: 'Internal server error',
+      });
+    }
+  });
+
+  /**
+   * GET /api/auth/me
+   * Get current authenticated user info
+   */
+  router.get('/me', async (req: Request, res: Response) => {
+    try {
+      console.log('=== /api/auth/me Debug ===');
+      console.log('Cookie header:', req.headers.cookie);
+      console.log('Cookies from parser:', req.cookies);
+      console.log('req.user:', req.user);
+
+      // Check if user is authenticated (req.user set by optional auth middleware)
+      if (!req.user || !req.user.userId) {
+        // Not authenticated - return null user instead of 401
+        console.log('No user in request, returning null');
+        return res.status(200).json({ user: null });
+      }
+
+      console.log('User authenticated, userId:', req.user.userId);
+
+      // Get user from database
+      const [user] = await db`
+        SELECT id, username, email, bio, avatar_url
+        FROM profiles
+        WHERE id = ${req.user.userId}
+      `;
+
+      console.log('User from database:', user ? user.username : 'not found');
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      return res.status(200).json({
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          bio: user.bio,
+          avatarUrl: user.avatar_url,
+        },
+      });
+    } catch (error) {
+      console.error('Get current user error:', error);
       return res.status(500).json({
         error: 'Internal server error',
       });
