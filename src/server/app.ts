@@ -1,5 +1,6 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
+import jwt from 'jsonwebtoken';
 import type { Express } from 'express';
 import type { Sql } from '../db/connection.js';
 import { createAuthRouter } from '../routes/auth.js';
@@ -39,6 +40,12 @@ export function createApp(
       res.header('Access-Control-Allow-Credentials', 'true');
       res.header('Access-Control-Allow-Headers', 'Content-Type');
       res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+
+      // Handle preflight OPTIONS requests
+      if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+      }
+
       next();
     });
   }
@@ -46,23 +53,32 @@ export function createApp(
   // Create authentication middleware
   const authenticate = createAuthenticateMiddleware(jwtSecret);
 
-  // Mount authentication routes
+  // Optional auth middleware - adds user to request if authenticated, but doesn't reject
+  const optionalAuth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const token = req.cookies.auth_token;
+    if (token) {
+      try {
+        const payload = jwt.verify(token, jwtSecret) as { userId: string };
+        req.user = { userId: payload.userId };
+      } catch (error) {
+        // Invalid token, continue without user
+      }
+    }
+    next();
+  };
+
+  // Mount tweet routes with optional auth - must use app.use() to mount routers
+  app.use('/api/tweets', optionalAuth, tweetRoutes);
+
+  // Mount like routes with required auth
+  app.use('/api/likes', authenticate, likeRoutes);
+
+  // Mount profile routes with optional auth
+  app.use('/api/profiles', optionalAuth, profileRoutes);
+
+  // Mount authentication routes with optional auth
   const authRouter = createAuthRouter(db, jwtSecret, cookieDomain, isProduction);
-  app.use('/api/auth', authRouter);
-
-  // Mount tweet routes (POST requires authentication)
-  app.post('/api/tweets', authenticate, tweetRoutes);
-  app.get('/api/tweets', tweetRoutes);
-  app.get('/api/tweets/user/:username', tweetRoutes);
-  app.get('/api/tweets/:id', tweetRoutes);
-
-  // Mount like routes (all require authentication)
-  app.post('/api/likes', authenticate, likeRoutes);
-  app.delete('/api/likes', authenticate, likeRoutes);
-
-  // Mount profile routes (PUT requires authentication)
-  app.get('/api/profiles/:username', profileRoutes);
-  app.put('/api/profiles/:username', authenticate, profileRoutes);
+  app.use('/api/auth', optionalAuth, authRouter);
 
   // Health check endpoint
   app.get('/api/health', (req, res) => {

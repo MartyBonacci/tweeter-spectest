@@ -12,16 +12,18 @@ import { createTweet, getAllTweetsWithLikes, getTweetByIdWithLikes, getUserTweet
 import { createTweetSchema } from '../schemas/tweet.js';
 import { sanitizeContent } from '../utils/sanitizeContent.js';
 import { loadEnv } from '../config/env.js';
+import { createAuthenticateMiddleware } from '../middleware/auth.js';
 
 const router = Router();
-const { DATABASE_URL } = loadEnv();
+const { DATABASE_URL, JWT_SECRET } = loadEnv();
 const db = createDbConnection(DATABASE_URL);
+const authenticate = createAuthenticateMiddleware(JWT_SECRET);
 
 /**
  * POST /api/tweets
  * Create a new tweet (requires authentication)
  */
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', authenticate, async (req: Request, res: Response) => {
   // Check authentication (added by authenticate middleware)
   if (!req.user || !req.user.userId) {
     return res.status(401).json({ error: 'Authentication required' });

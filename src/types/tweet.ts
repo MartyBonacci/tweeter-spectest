@@ -59,15 +59,16 @@ export interface TweetWithAuthorRow {
 /**
  * Database row type for tweet with author and likes (from JOIN query with aggregation)
  * Feature: 003-like-functionality
+ * Note: postgres library converts snake_case to camelCase
  */
 export interface TweetWithAuthorAndLikesRow {
   id: string;
   content: string;
-  created_at: Date;
-  profile_id: string;
+  createdAt: Date;
+  profileId: string;
   username: string;
-  like_count: string; // COUNT returns string
-  is_liked_by_user: boolean;
+  likeCount: string; // COUNT returns string
+  isLikedByUser: boolean;
 }
 
 /**
@@ -105,12 +106,12 @@ export function mapTweetWithAuthorAndLikesRow(row: TweetWithAuthorAndLikesRow): 
   return {
     id: row.id,
     content: row.content,
-    createdAt: new Date(row.created_at),
+    createdAt: new Date(row.createdAt),
     author: {
-      id: row.profile_id,
+      id: row.profileId,
       username: row.username,
     },
-    likeCount: parseInt(row.like_count, 10),
-    isLikedByUser: row.is_liked_by_user,
+    likeCount: parseInt(row.likeCount, 10),
+    isLikedByUser: row.isLikedByUser,
   };
 }
