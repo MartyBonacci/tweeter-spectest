@@ -1,9 +1,21 @@
 import { Form, useActionData, useNavigation } from 'react-router';
-import { useState, type ChangeEvent } from 'react';
+import { useState, useMemo, type ChangeEvent } from 'react';
+import {
+  getColorState,
+  formatCounter,
+  MAX_TWEET_LENGTH,
+  type CounterColorState,
+} from '../utils/tweetCounter';
 
 /**
  * Tweet composition component with real-time character counter
  * Uses React Router Form for progressive enhancement
+ *
+ * Features:
+ * - Real-time character counter in "X / 140" format
+ * - Three-state color system (default/warning/exceeded)
+ * - Visual feedback at 120 chars (yellow) and 140+ chars (red)
+ * - Submission prevention when over limit
  */
 export function TweetComposer() {
   const actionData = useActionData<{ error?: string }>();
@@ -13,11 +25,19 @@ export function TweetComposer() {
   // Form state
   const [content, setContent] = useState('');
 
-  // Calculate remaining characters
-  const remainingChars = 140 - content.length;
-  const isOverLimit = remainingChars < 0;
+  // Character counting and validation
+  const count = content.length;
   const isEmpty = content.trim().length === 0;
+  const isOverLimit = count > MAX_TWEET_LENGTH;
   const isInvalid = isEmpty || isOverLimit;
+
+  // Memoize color state calculation to avoid unnecessary recalculations
+  // Only recalculates when character count changes
+  // Performance optimization: prevents re-running color logic on every render
+  const colorState = useMemo(
+    () => getColorState(count, MAX_TWEET_LENGTH),
+    [count]
+  );
 
   // Handle content change
   const handleContentChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -58,15 +78,29 @@ export function TweetComposer() {
 
           {/* Character counter and submit button */}
           <div className="flex items-center justify-between">
-            {/* Character counter */}
+            {/*
+              Character counter with three-state coloring:
+              - Default (gray-600): 0-119 chars - neutral state
+              - Warning (yellow-700): 120-139 chars - approaching limit (6.11:1 contrast, WCAG AA compliant)
+              - Exceeded (red-600): 140+ chars - over limit, submission blocked
+
+              Color thresholds provide progressive feedback:
+              - 120 chars: Early warning (20 chars before limit) gives users time to edit
+              - 140 chars: Hard limit matches database constraint and backend validation
+            */}
             <div
-              className={`text-sm font-medium ${
-                isOverLimit ? 'text-red-600' : 'text-gray-600'
+              className={`text-sm font-medium transition-colors duration-200 ${
+                colorState === 'exceeded'
+                  ? 'text-red-600'
+                  : colorState === 'warning'
+                    ? 'text-yellow-700'
+                    : 'text-gray-600'
               }`}
               role="status"
               aria-live="polite"
+              aria-label={`Character count: ${formatCounter(count, MAX_TWEET_LENGTH)}`}
             >
-              {remainingChars} characters remaining
+              {formatCounter(count, MAX_TWEET_LENGTH)}
             </div>
 
             {/* Submit button */}
