@@ -1,12 +1,16 @@
 /**
  * Profile Page
  * Feature: Phase 0 POC - User Profiles
+ * Feature: 909-user-profile-tweets-feed - Extended to show user tweets
  *
- * User profile view page with bio, avatar, and edit button
+ * User profile view page with bio, avatar, edit button, and tweets feed
  */
 
-import { useLoaderData, Link } from 'react-router';
+import { useLoaderData, Link, useNavigation } from 'react-router';
 import type { LoaderFunctionArgs } from 'react-router';
+import type { TweetWithAuthorAndLikes } from '../../src/types/tweet';
+import { fetchTweetsByUsername } from '../api/tweets';
+import { TweetCard } from '../components/TweetCard';
 
 interface ProfileData {
   profile: {
@@ -19,10 +23,12 @@ interface ProfileData {
   };
   isOwnProfile: boolean;
   currentUserId: string | null;
+  tweets: TweetWithAuthorAndLikes[]; // NEW: User's tweets
 }
 
 /**
- * Profile loader - fetches profile data by username
+ * Profile loader - fetches profile data and tweets by username
+ * Feature: 909-user-profile-tweets-feed - Extended to fetch user tweets
  */
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const { username } = params;
@@ -71,19 +77,33 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       // User not authenticated, that's fine
     }
 
+    // NEW: Fetch user's tweets
+    // Note: fetchTweetsByUsername uses fetch internally, which doesn't automatically
+    // forward cookies from the loader request. We rely on the API being public.
+    const tweets = await fetchTweetsByUsername(username);
+
     return {
       profile: data.profile,
       isOwnProfile,
       currentUserId,
+      tweets, // NEW: Include tweets in loader data
     };
   } catch (error) {
+    // Don't catch Response objects - they should be thrown to React Router
+    if (error instanceof Response) {
+      throw error;
+    }
     console.error('Profile loader error:', error);
     throw new Response('Failed to load profile', { status: 500 });
   }
 }
 
 export default function Profile() {
-  const { profile, isOwnProfile } = useLoaderData<ProfileData>();
+  const { profile, isOwnProfile, tweets } = useLoaderData<ProfileData>();
+  const navigation = useNavigation();
+
+  // Check if we're navigating (loading state)
+  const isLoading = navigation.state === 'loading';
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
@@ -150,6 +170,63 @@ export default function Profile() {
             )}
           </div>
         </div>
+
+        {/* Tweets Section - Feature: 909-user-profile-tweets-feed */}
+        <section className="mt-8" aria-labelledby="user-tweets-heading">
+          <h2 id="user-tweets-heading" className="text-2xl font-bold text-gray-900 mb-4">
+            Tweets
+          </h2>
+
+          {isLoading ? (
+            // Loading state
+            <div className="flex justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+          ) : tweets.length === 0 ? (
+            // Empty state - Enhanced for Feature 909
+            <div
+              className="bg-white rounded-lg shadow-md p-12 text-center"
+              role="status"
+              aria-live="polite"
+            >
+              {/* Icon */}
+              <div className="mb-4 flex justify-center">
+                <svg
+                  className="w-16 h-16 text-gray-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+              </div>
+
+              {/* Message */}
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                No tweets yet
+              </h3>
+              <p className="text-gray-500 max-w-sm mx-auto">
+                {isOwnProfile
+                  ? "You haven't posted any tweets yet. Share your first thought with the world!"
+                  : `@${profile.username} hasn't posted any tweets yet.`}
+              </p>
+            </div>
+          ) : (
+            // Tweets list
+            <div className="space-y-4">
+              {tweets.map((tweet) => (
+                <TweetCard key={tweet.id} tweet={tweet} />
+              ))}
+            </div>
+          )}
+        </section>
 
         {/* Back to Feed Link */}
         <div className="mt-6">
