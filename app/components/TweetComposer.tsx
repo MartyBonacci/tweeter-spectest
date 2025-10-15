@@ -93,7 +93,7 @@ export function TweetComposer() {
                 colorState === 'exceeded'
                   ? 'text-red-600'
                   : colorState === 'warning'
-                    ? 'text-yellow-700'
+                    ? 'text-yellow-400'
                     : 'text-gray-600'
               }`}
               role="status"
