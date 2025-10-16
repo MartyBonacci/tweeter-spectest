@@ -30,7 +30,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       headers['Cookie'] = cookie;
     }
 
-    const response = await fetch('http://localhost:3000/api/auth/me', {
+    const response = await fetch('/api/auth/me', {
       headers,
     });
 

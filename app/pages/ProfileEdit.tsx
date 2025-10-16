@@ -50,7 +50,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
   try {
     // Fetch profile data
-    const response = await fetch(`http://localhost:3000/api/profiles/${username}`, {
+    const response = await fetch(`/api/profiles/${username}`, {
       headers: {
         'Cookie': cookie,
       },
@@ -64,7 +64,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
     // Verify user is editing their own profile
     try {
-      const meResponse = await fetch('http://localhost:3000/api/auth/me', {
+      const meResponse = await fetch('/api/auth/me', {
         headers: {
           'Cookie': cookie,
         },
@@ -119,7 +119,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   try {
     // Update profile
-    const response = await fetch(`http://localhost:3000/api/profiles/${username}`, {
+    const response = await fetch(`/api/profiles/${username}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',

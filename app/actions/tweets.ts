@@ -39,7 +39,7 @@ export async function createTweetAction({ request }: ActionFunctionArgs) {
 
   try {
     // Call backend API
-    const response = await fetch('http://localhost:3000/api/tweets', {
+    const response = await fetch('/api/tweets', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
