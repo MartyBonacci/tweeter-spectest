@@ -99,7 +99,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 }
 
 export default function Profile() {
-  const { profile, isOwnProfile, tweets } = useLoaderData<ProfileData>();
+  const { profile, isOwnProfile, currentUserId, tweets } = useLoaderData<ProfileData>();
   const navigation = useNavigation();
 
   // Check if we're navigating (loading state)
@@ -219,10 +219,10 @@ export default function Profile() {
               </p>
             </div>
           ) : (
-            // Tweets list
+            // Tweets list - Feature: 910 - Pass currentUserId for delete button
             <div className="space-y-4">
               {tweets.map((tweet) => (
-                <TweetCard key={tweet.id} tweet={tweet} />
+                <TweetCard key={tweet.id} tweet={tweet} currentUserId={currentUserId || undefined} />
               ))}
             </div>
           )}

@@ -35,10 +35,24 @@ export async function loader({ request }: LoaderFunctionArgs) {
       createdAt: new Date(tweet.createdAt),
     }));
 
-    return { tweets };
+    // Feature: 910 - Get current user ID for delete button
+    let currentUserId: string | null = null;
+    try {
+      const meResponse = await fetch('http://localhost:3000/api/auth/me', {
+        headers: { 'Cookie': cookie },
+      });
+      if (meResponse.ok) {
+        const meData = await meResponse.json();
+        currentUserId = meData.user?.id || null;
+      }
+    } catch {
+      // User not authenticated, that's fine
+    }
+
+    return { tweets, currentUserId };
   } catch (error) {
     console.error('Feed loader error:', error);
-    return { tweets: [] };
+    return { tweets: [], currentUserId: null };
   }
 }
 
@@ -102,7 +116,10 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function Feed() {
-  const { tweets } = useLoaderData<{ tweets: TweetWithAuthorAndLikes[] }>();
+  const { tweets, currentUserId } = useLoaderData<{
+    tweets: TweetWithAuthorAndLikes[];
+    currentUserId: string | null;
+  }>();
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
@@ -116,8 +133,8 @@ export default function Feed() {
         {/* Tweet composer (authenticated users only) */}
         <TweetComposer />
 
-        {/* Tweet feed */}
-        <TweetList tweets={tweets} />
+        {/* Tweet feed - Feature: 910 - Pass currentUserId for delete button */}
+        <TweetList tweets={tweets} currentUserId={currentUserId || undefined} />
       </div>
     </div>
   );

@@ -44,7 +44,21 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       createdAt: new Date(data.tweet.createdAt),
     };
 
-    return { tweet };
+    // Feature: 910 - Get current user ID for delete button
+    let currentUserId: string | null = null;
+    try {
+      const meResponse = await fetch('http://localhost:3000/api/auth/me', {
+        headers: { 'Cookie': cookie },
+      });
+      if (meResponse.ok) {
+        const meData = await meResponse.json();
+        currentUserId = meData.user?.id || null;
+      }
+    } catch {
+      // User not authenticated, that's fine
+    }
+
+    return { tweet, currentUserId };
   } catch (error) {
     if (error instanceof Response) {
       throw error;
@@ -55,7 +69,10 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 }
 
 export default function TweetDetail() {
-  const { tweet } = useLoaderData<{ tweet: TweetWithAuthorAndLikes }>();
+  const { tweet, currentUserId } = useLoaderData<{
+    tweet: TweetWithAuthorAndLikes;
+    currentUserId: string | null;
+  }>();
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
@@ -70,10 +87,10 @@ export default function TweetDetail() {
           </a>
         </div>
 
-        {/* Tweet detail */}
+        {/* Tweet detail - Feature: 910 - Pass currentUserId for delete button */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Tweet</h1>
-          <TweetCard tweet={tweet} />
+          <TweetCard tweet={tweet} currentUserId={currentUserId || undefined} />
         </div>
 
         {/* Future: Reply thread, like count, etc. */}
