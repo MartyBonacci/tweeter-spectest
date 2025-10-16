@@ -1,10 +1,11 @@
-import { jsx, jsxs } from "react/jsx-runtime";
+import { jsx, jsxs, Fragment } from "react/jsx-runtime";
 import { PassThrough } from "node:stream";
 import { createReadableStreamFromReadable } from "@react-router/node";
-import { ServerRouter, useLocation, Link, Form, UNSAFE_withComponentProps, useLoaderData, Meta, Links, Outlet, ScrollRestoration, Scripts, UNSAFE_withErrorBoundaryProps, useActionData, useNavigation, redirect, useNavigate } from "react-router";
+import { ServerRouter, useLocation, Link, Form, UNSAFE_withComponentProps, useLoaderData, Meta, Links, Outlet, ScrollRestoration, Scripts, UNSAFE_withErrorBoundaryProps, useActionData, useNavigation, redirect, useFetcher, useNavigate } from "react-router";
 import { isbot } from "isbot";
 import { renderToPipeableStream } from "react-dom/server";
-import { useState, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { Modal, Button } from "flowbite-react";
 import { z } from "zod";
 const streamTimeout = 5e3;
 function handleRequest(request, responseStatusCode, responseHeaders, routerContext, loadContext) {
@@ -56,7 +57,7 @@ const entryServer = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineP
   default: handleRequest,
   streamTimeout
 }, Symbol.toStringTag, { value: "Module" }));
-const stylesheetUrl = "/assets/globals-BPymTpMD.css";
+const stylesheetUrl = "/assets/globals-CwluhE98.css";
 function Navbar({ currentUser }) {
   const location = useLocation();
   const isActive = (path) => {
@@ -114,6 +115,16 @@ function Navbar({ currentUser }) {
     ] })
   ] }) }) });
 }
+function getApiBaseUrl() {
+  if (typeof window !== "undefined") {
+    return "";
+  }
+  return process.env.API_BASE_URL || "http://localhost:3000";
+}
+function getApiUrl(path) {
+  const base = getApiBaseUrl();
+  return `${base}${path}`;
+}
 const links = () => [{
   rel: "stylesheet",
   href: stylesheetUrl
@@ -121,20 +132,30 @@ const links = () => [{
 async function loader$4({
   request
 }) {
-  const cookie = request.headers.get("Cookie") || "";
   try {
-    const response = await fetch("http://localhost:3000/api/auth/me", {
-      headers: {
-        "Cookie": cookie
-      }
+    const cookie = request.headers.get("Cookie");
+    console.log("=== Root Loader Debug ===");
+    console.log("Request URL:", request.url);
+    console.log("Cookie header from browser:", cookie);
+    const headers = {};
+    if (cookie) {
+      headers["Cookie"] = cookie;
+    }
+    const response = await fetch(getApiUrl("/api/auth/me"), {
+      headers
     });
+    console.log("API /auth/me response status:", response.status);
     if (response.ok) {
       const data = await response.json();
+      console.log("Current user from API:", data.user ? data.user.username : "null");
       return {
         currentUser: data.user || null
       };
+    } else {
+      console.log("API /auth/me failed, returning null user");
     }
-  } catch {
+  } catch (error) {
+    console.log("Root loader error:", error);
   }
   return {
     currentUser: null
@@ -381,11 +402,13 @@ async function action$5({
     };
   }
   try {
-    const response = await fetch("http://localhost:3000/api/auth/signup", {
+    const response = await fetch(getApiUrl("/api/auth/signup"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
+      credentials: "include",
+      // CRITICAL: Allow cookies to be set
       body: JSON.stringify({
         username: username.toString(),
         email: email.toString(),
@@ -399,16 +422,14 @@ async function action$5({
         field: data.field
       };
     }
-    const setCookie = response.headers.get("Set-Cookie");
-    if (!setCookie) {
-      console.error("No Set-Cookie header in signup response!");
-      return {
-        error: "Authentication failed - no session created"
-      };
-    }
-    return redirect("/feed", {
+    const setCookie = response.headers.get("set-cookie");
+    return new Response(null, {
+      status: 302,
       headers: {
-        "Set-Cookie": setCookie
+        Location: "/feed",
+        ...setCookie ? {
+          "Set-Cookie": setCookie
+        } : {}
       }
     });
   } catch (error) {
@@ -531,35 +552,32 @@ async function action$4({
     };
   }
   try {
-    const response = await fetch("http://localhost:3000/api/auth/signin", {
+    const response = await fetch(getApiUrl("/api/auth/signin"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
+      credentials: "include",
+      // CRITICAL: Allow cookies to be set
       body: JSON.stringify({
         email,
         password
       })
     });
-    console.log("Signin response status:", response.status);
-    console.log("Signin response headers:", Array.from(response.headers.entries()));
+    const data = await response.json();
     if (!response.ok) {
-      const data = await response.json();
       return {
         error: data.error || "Invalid credentials"
       };
     }
-    const setCookie = response.headers.get("Set-Cookie");
-    console.log("Set-Cookie from backend:", setCookie);
-    if (!setCookie) {
-      console.error("No Set-Cookie header in signin response!");
-      return {
-        error: "Authentication failed - no session created"
-      };
-    }
-    return redirect("/feed", {
+    const setCookie = response.headers.get("set-cookie");
+    return new Response(null, {
+      status: 302,
       headers: {
-        "Set-Cookie": setCookie
+        Location: "/feed",
+        ...setCookie ? {
+          "Set-Cookie": setCookie
+        } : {}
       }
     });
   } catch (error) {
@@ -594,13 +612,22 @@ async function action$3({
 }) {
   const cookie = request.headers.get("Cookie") || "";
   try {
-    const response = await fetch("http://localhost:3000/api/auth/signout", {
+    const response = await fetch(getApiUrl("/api/auth/signout"), {
       method: "POST",
       headers: {
         "Cookie": cookie
       }
     });
-    return redirect("/signin");
+    const setCookie = response.headers.get("set-cookie");
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: "/signin",
+        ...setCookie ? {
+          "Set-Cookie": setCookie
+        } : {}
+      }
+    });
   } catch (error) {
     console.error("Signout error:", error);
     return redirect("/signin");
@@ -614,15 +641,32 @@ const route4 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProper
   action: action$3,
   default: Signout
 }, Symbol.toStringTag, { value: "Module" }));
+const MAX_TWEET_LENGTH = 140;
+function getColorState(count, maxLength) {
+  if (count >= maxLength) {
+    return "exceeded";
+  }
+  if (count >= maxLength - 20) {
+    return "warning";
+  }
+  return "default";
+}
+function formatCounter(count, maxLength) {
+  return `${count} / ${maxLength}`;
+}
 function TweetComposer() {
   const actionData = useActionData();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
   const [content, setContent] = useState("");
-  const remainingChars = 140 - content.length;
-  const isOverLimit = remainingChars < 0;
+  const count = content.length;
   const isEmpty = content.trim().length === 0;
+  const isOverLimit = count > MAX_TWEET_LENGTH;
   const isInvalid = isEmpty || isOverLimit;
+  const colorState = useMemo(
+    () => getColorState(count, MAX_TWEET_LENGTH),
+    [count]
+  );
   const handleContentChange = (e) => {
     setContent(e.currentTarget.value);
   };
@@ -647,16 +691,14 @@ function TweetComposer() {
         }
       ) }),
       /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between", children: [
-        /* @__PURE__ */ jsxs(
+        /* @__PURE__ */ jsx(
           "div",
           {
-            className: `text-sm font-medium ${isOverLimit ? "text-red-600" : "text-gray-600"}`,
+            className: `text-sm font-medium transition-colors duration-200 ${colorState === "exceeded" ? "text-red-600" : colorState === "warning" ? "text-yellow-400" : "text-gray-600"}`,
             role: "status",
             "aria-live": "polite",
-            children: [
-              remainingChars,
-              " characters remaining"
-            ]
+            "aria-label": `Character count: ${formatCounter(count, MAX_TWEET_LENGTH)}`,
+            children: formatCounter(count, MAX_TWEET_LENGTH)
           }
         ),
         /* @__PURE__ */ jsx(
@@ -706,58 +748,177 @@ function formatTimestampFull(date) {
   return date.toLocaleDateString("en-US", options);
 }
 function LikeButton({ tweetId, initialLikeCount, initialIsLiked }) {
-  const navigation = useNavigation();
+  const fetcher = useFetcher();
   const [optimisticLiked, setOptimisticLiked] = useState(initialIsLiked);
   const [optimisticCount, setOptimisticCount] = useState(initialLikeCount);
   useEffect(() => {
     setOptimisticLiked(initialIsLiked);
     setOptimisticCount(initialLikeCount);
   }, [initialIsLiked, initialLikeCount]);
-  const isSubmitting = navigation.state === "submitting";
+  const isSubmitting = fetcher.state === "submitting";
   const handleClick = (e) => {
+    e.preventDefault();
     e.stopPropagation();
     if (!isSubmitting) {
-      setOptimisticLiked(!optimisticLiked);
+      const newLiked = !optimisticLiked;
+      setOptimisticLiked(newLiked);
       setOptimisticCount(optimisticLiked ? optimisticCount - 1 : optimisticCount + 1);
+      const formData = new FormData();
+      formData.append("tweetId", tweetId);
+      formData.append("action", newLiked ? "like" : "unlike");
+      fetcher.submit(formData, {
+        method: "post",
+        action: `/tweets/${tweetId}/like`
+      });
     }
   };
-  return /* @__PURE__ */ jsxs(Form, { method: "post", action: `/tweets/${tweetId}/like`, onClick: handleClick, children: [
-    /* @__PURE__ */ jsx("input", { type: "hidden", name: "tweetId", value: tweetId }),
-    /* @__PURE__ */ jsx("input", { type: "hidden", name: "action", value: optimisticLiked ? "unlike" : "like" }),
-    /* @__PURE__ */ jsxs(
+  return /* @__PURE__ */ jsx("div", { onClick: handleClick, children: /* @__PURE__ */ jsxs(
+    "button",
+    {
+      type: "button",
+      disabled: isSubmitting,
+      className: `flex items-center space-x-2 px-3 py-1.5 rounded-full transition-all ${optimisticLiked ? "text-red-600 hover:bg-red-50" : "text-gray-600 hover:bg-gray-100"} ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`,
+      "aria-label": optimisticLiked ? "Unlike tweet" : "Like tweet",
+      children: [
+        /* @__PURE__ */ jsx(
+          "svg",
+          {
+            className: `w-5 h-5 ${optimisticLiked ? "fill-current" : "stroke-current fill-none"}`,
+            xmlns: "http://www.w3.org/2000/svg",
+            viewBox: "0 0 24 24",
+            strokeWidth: "2",
+            strokeLinecap: "round",
+            strokeLinejoin: "round",
+            children: /* @__PURE__ */ jsx("path", { d: "M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" })
+          }
+        ),
+        /* @__PURE__ */ jsx("span", { className: "text-sm font-medium", children: optimisticCount })
+      ]
+    }
+  ) });
+}
+function DeleteConfirmationModal({
+  isOpen,
+  tweetContent,
+  onConfirm,
+  onCancel,
+  isDeleting
+}) {
+  return /* @__PURE__ */ jsxs(Modal, { show: isOpen, onClose: onCancel, size: "md", children: [
+    /* @__PURE__ */ jsx(Modal.Header, { children: "Delete Tweet" }),
+    /* @__PURE__ */ jsx(Modal.Body, { children: /* @__PURE__ */ jsxs("div", { className: "space-y-4", children: [
+      /* @__PURE__ */ jsx("p", { className: "text-gray-700", children: "Are you sure you want to delete this tweet?" }),
+      /* @__PURE__ */ jsx("div", { className: "bg-gray-100 p-4 rounded-md", children: /* @__PURE__ */ jsxs("p", { className: "text-gray-900 italic", children: [
+        '"',
+        tweetContent,
+        '"'
+      ] }) }),
+      /* @__PURE__ */ jsx("p", { className: "text-sm text-gray-600", children: "This action cannot be undone." })
+    ] }) }),
+    /* @__PURE__ */ jsxs(Modal.Footer, { children: [
+      /* @__PURE__ */ jsx(
+        Button,
+        {
+          color: "failure",
+          onClick: onConfirm,
+          disabled: isDeleting,
+          className: "bg-red-600 text-white hover:bg-red-700 focus:ring-4 focus:ring-red-300 disabled:bg-red-400",
+          children: isDeleting ? "Deleting..." : "Delete"
+        }
+      ),
+      /* @__PURE__ */ jsx(Button, { color: "gray", onClick: onCancel, disabled: isDeleting, children: "Cancel" })
+    ] })
+  ] });
+}
+function DeleteButton({ tweetId, tweetContent, onDeleteSuccess }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/tweets/${tweetId}`, {
+        method: "DELETE",
+        credentials: "include"
+        // Include cookies for JWT auth
+      });
+      if (response.ok) {
+        setIsModalOpen(false);
+        setIsDeleting(false);
+        onDeleteSuccess == null ? void 0 : onDeleteSuccess();
+      } else {
+        const errorData = await response.json().catch(() => ({
+          error: "Failed to delete tweet"
+        }));
+        console.error("Delete failed:", errorData.error);
+        setIsDeleting(false);
+        alert(`Error: ${errorData.error}`);
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      setIsDeleting(false);
+      alert("Network error. Please try again.");
+    }
+  };
+  return /* @__PURE__ */ jsxs(Fragment, { children: [
+    /* @__PURE__ */ jsx(
       "button",
       {
-        type: "submit",
-        disabled: isSubmitting,
-        className: `flex items-center space-x-2 px-3 py-1.5 rounded-full transition-all ${optimisticLiked ? "text-red-600 hover:bg-red-50" : "text-gray-600 hover:bg-gray-100"} ${isSubmitting ? "opacity-50 cursor-not-allowed" : ""}`,
-        "aria-label": optimisticLiked ? "Unlike tweet" : "Like tweet",
-        children: [
-          /* @__PURE__ */ jsx(
-            "svg",
-            {
-              className: `w-5 h-5 ${optimisticLiked ? "fill-current" : "stroke-current fill-none"}`,
-              xmlns: "http://www.w3.org/2000/svg",
-              viewBox: "0 0 24 24",
-              strokeWidth: "2",
-              strokeLinecap: "round",
-              strokeLinejoin: "round",
-              children: /* @__PURE__ */ jsx("path", { d: "M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" })
-            }
-          ),
-          /* @__PURE__ */ jsx("span", { className: "text-sm font-medium", children: optimisticCount })
-        ]
+        onClick: () => setIsModalOpen(true),
+        className: "text-red-600 hover:text-red-700 p-2 rounded-full hover:bg-red-50 transition-colors",
+        "aria-label": "Delete tweet",
+        title: "Delete tweet",
+        type: "button",
+        children: /* @__PURE__ */ jsxs(
+          "svg",
+          {
+            className: "w-5 h-5",
+            xmlns: "http://www.w3.org/2000/svg",
+            viewBox: "0 0 24 24",
+            fill: "none",
+            stroke: "currentColor",
+            strokeWidth: "2",
+            strokeLinecap: "round",
+            strokeLinejoin: "round",
+            children: [
+              /* @__PURE__ */ jsx("polyline", { points: "3 6 5 6 21 6" }),
+              /* @__PURE__ */ jsx("path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" }),
+              /* @__PURE__ */ jsx("line", { x1: "10", y1: "11", x2: "10", y2: "17" }),
+              /* @__PURE__ */ jsx("line", { x1: "14", y1: "11", x2: "14", y2: "17" })
+            ]
+          }
+        )
+      }
+    ),
+    /* @__PURE__ */ jsx(
+      DeleteConfirmationModal,
+      {
+        isOpen: isModalOpen,
+        tweetContent,
+        onConfirm: handleDelete,
+        onCancel: () => setIsModalOpen(false),
+        isDeleting
       }
     )
   ] });
 }
-function TweetCard({ tweet }) {
+function TweetCard({
+  tweet,
+  currentUserId
+}) {
   const navigate = useNavigate();
+  const [isOptimisticallyDeleted, setIsOptimisticallyDeleted] = useState(false);
   const handleCardClick = () => {
     navigate(`/tweets/${tweet.id}`);
   };
   const handleUsernameClick = (e) => {
     e.stopPropagation();
   };
+  const handleDeleteSuccess = () => {
+    setIsOptimisticallyDeleted(true);
+  };
+  if (isOptimisticallyDeleted) {
+    return null;
+  }
   return /* @__PURE__ */ jsxs(
     "article",
     {
@@ -789,33 +950,47 @@ function TweetCard({ tweet }) {
           )
         ] }),
         /* @__PURE__ */ jsx("p", { className: "text-gray-800 text-base whitespace-pre-wrap break-words mb-3", children: tweet.content }),
-        /* @__PURE__ */ jsx("div", { className: "flex items-center", onClick: (e) => e.stopPropagation(), children: /* @__PURE__ */ jsx(
-          LikeButton,
-          {
-            tweetId: tweet.id,
-            initialLikeCount: tweet.likeCount,
-            initialIsLiked: tweet.isLikedByUser
-          }
-        ) })
+        /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between", children: [
+          /* @__PURE__ */ jsx("div", { className: "flex items-center", onClick: (e) => e.stopPropagation(), children: /* @__PURE__ */ jsx(
+            LikeButton,
+            {
+              tweetId: tweet.id,
+              initialLikeCount: tweet.likeCount,
+              initialIsLiked: tweet.isLikedByUser
+            }
+          ) }),
+          currentUserId && currentUserId === tweet.author.id && /* @__PURE__ */ jsx("div", { onClick: (e) => e.stopPropagation(), children: /* @__PURE__ */ jsx(
+            DeleteButton,
+            {
+              tweetId: tweet.id,
+              tweetContent: tweet.content,
+              onDeleteSuccess: handleDeleteSuccess
+            }
+          ) })
+        ] })
       ]
     }
   );
 }
-function TweetList({ tweets }) {
+function TweetList({
+  tweets,
+  currentUserId
+}) {
   if (tweets.length === 0) {
     return /* @__PURE__ */ jsxs("div", { className: "bg-white rounded-lg shadow-md p-12 text-center", children: [
       /* @__PURE__ */ jsx("p", { className: "text-gray-500 text-lg", children: "No tweets yet." }),
       /* @__PURE__ */ jsx("p", { className: "text-gray-400 text-sm mt-2", children: "Be the first to post!" })
     ] });
   }
-  return /* @__PURE__ */ jsx("div", { className: "space-y-4", children: tweets.map((tweet) => /* @__PURE__ */ jsx(TweetCard, { tweet }, tweet.id)) });
+  return /* @__PURE__ */ jsx("div", { className: "space-y-4", children: tweets.map((tweet) => /* @__PURE__ */ jsx(TweetCard, { tweet, currentUserId }, tweet.id)) });
 }
 async function loader$3({
   request
 }) {
+  var _a;
   const cookie = request.headers.get("Cookie") || "";
   try {
-    const response = await fetch("http://localhost:3000/api/tweets", {
+    const response = await fetch(getApiUrl("/api/tweets"), {
       headers: {
         "Cookie": cookie
         // Forward authentication cookies to backend
@@ -829,13 +1004,28 @@ async function loader$3({
       ...tweet,
       createdAt: new Date(tweet.createdAt)
     }));
+    let currentUserId = null;
+    try {
+      const meResponse = await fetch(getApiUrl("/api/auth/me"), {
+        headers: {
+          "Cookie": cookie
+        }
+      });
+      if (meResponse.ok) {
+        const meData = await meResponse.json();
+        currentUserId = ((_a = meData.user) == null ? void 0 : _a.id) || null;
+      }
+    } catch {
+    }
     return {
-      tweets
+      tweets,
+      currentUserId
     };
   } catch (error) {
     console.error("Feed loader error:", error);
     return {
-      tweets: []
+      tweets: [],
+      currentUserId: null
     };
   }
 }
@@ -859,7 +1049,7 @@ async function action$2({
   console.log("Cookies from request:", cookie);
   console.log("All request headers:", Array.from(request.headers.entries()));
   try {
-    const url = "http://localhost:3000/api/tweets";
+    const url = getApiUrl("/api/tweets");
     console.log("Posting to URL:", url);
     console.log("Request body:", JSON.stringify({
       content
@@ -898,7 +1088,8 @@ async function action$2({
 }
 const Feed = UNSAFE_withComponentProps(function Feed2() {
   const {
-    tweets
+    tweets,
+    currentUserId
   } = useLoaderData();
   return /* @__PURE__ */ jsx("div", {
     className: "min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8",
@@ -914,7 +1105,8 @@ const Feed = UNSAFE_withComponentProps(function Feed2() {
           children: "See what everyone is talking about"
         })]
       }), /* @__PURE__ */ jsx(TweetComposer, {}), /* @__PURE__ */ jsx(TweetList, {
-        tweets
+        tweets,
+        currentUserId: currentUserId || void 0
       })]
     })
   });
@@ -938,6 +1130,7 @@ async function loader$2({
   request,
   params
 }) {
+  var _a;
   const {
     id
   } = params;
@@ -948,7 +1141,7 @@ async function loader$2({
   }
   const cookie = request.headers.get("Cookie") || "";
   try {
-    const response = await fetch(`http://localhost:3000/api/tweets/${id}`, {
+    const response = await fetch(getApiUrl(`/api/tweets/${id}`), {
       headers: {
         "Cookie": cookie
       }
@@ -966,8 +1159,22 @@ async function loader$2({
       ...data.tweet,
       createdAt: new Date(data.tweet.createdAt)
     };
+    let currentUserId = null;
+    try {
+      const meResponse = await fetch(getApiUrl("/api/auth/me"), {
+        headers: {
+          "Cookie": cookie
+        }
+      });
+      if (meResponse.ok) {
+        const meData = await meResponse.json();
+        currentUserId = ((_a = meData.user) == null ? void 0 : _a.id) || null;
+      }
+    } catch {
+    }
     return {
-      tweet
+      tweet,
+      currentUserId
     };
   } catch (error) {
     if (error instanceof Response) {
@@ -981,7 +1188,8 @@ async function loader$2({
 }
 const TweetDetail = UNSAFE_withComponentProps(function TweetDetail2() {
   const {
-    tweet
+    tweet,
+    currentUserId
   } = useLoaderData();
   return /* @__PURE__ */ jsx("div", {
     className: "min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8",
@@ -1000,7 +1208,8 @@ const TweetDetail = UNSAFE_withComponentProps(function TweetDetail2() {
           className: "text-2xl font-bold text-gray-900 mb-4",
           children: "Tweet"
         }), /* @__PURE__ */ jsx(TweetCard, {
-          tweet
+          tweet,
+          currentUserId: currentUserId || void 0
         })]
       })]
     })
@@ -1026,41 +1235,72 @@ const route6 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProper
   meta: meta$2
 }, Symbol.toStringTag, { value: "Module" }));
 async function toggleLikeAction({ request, params }) {
+  console.log("=== toggleLikeAction called ===");
+  console.log("URL:", request.url);
+  console.log("Method:", request.method);
   const formData = await request.formData();
   const tweetId = formData.get("tweetId");
   const action2 = formData.get("action");
+  console.log("tweetId:", tweetId);
+  console.log("action:", action2);
   if (!tweetId) {
+    console.log("ERROR: No tweetId provided");
     return { error: "Tweet ID is required" };
   }
-  const cookie = request.headers.get("Cookie") || "";
+  const cookie = request.headers.get("Cookie");
+  const headers = {
+    "Content-Type": "application/json"
+  };
+  if (cookie) {
+    headers["Cookie"] = cookie;
+  }
   try {
     if (action2 === "like") {
-      const response = await fetch("http://localhost:3000/api/likes", {
+      console.log("Calling API: POST /api/likes with tweetId:", tweetId);
+      const response = await fetch(getApiUrl("/api/likes"), {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Cookie": cookie
-        },
+        headers,
         body: JSON.stringify({ tweetId })
       });
+      console.log("API Response status:", response.status);
       if (!response.ok) {
         const errorData = await response.json();
-        return { error: errorData.error || "Failed to like tweet" };
+        console.log("API Error:", errorData);
+        const referrer = request.headers.get("Referer");
+        if (referrer) {
+          try {
+            return redirect(new URL(referrer).pathname);
+          } catch {
+            return redirect("/feed");
+          }
+        }
+        return redirect("/feed");
       }
+      console.log("Like created successfully");
     } else {
-      const response = await fetch("http://localhost:3000/api/likes", {
+      console.log("Calling API: DELETE /api/likes with tweetId:", tweetId);
+      const response = await fetch(getApiUrl("/api/likes"), {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          "Cookie": cookie
-        },
+        headers,
         body: JSON.stringify({ tweetId })
       });
+      console.log("API Response status:", response.status);
       if (!response.ok) {
         const errorData = await response.json();
-        return { error: errorData.error || "Failed to unlike tweet" };
+        console.log("API Error:", errorData);
+        const referrer = request.headers.get("Referer");
+        if (referrer) {
+          try {
+            return redirect(new URL(referrer).pathname);
+          } catch {
+            return redirect("/feed");
+          }
+        }
+        return redirect("/feed");
       }
+      console.log("Like removed successfully");
     }
+    console.log("Like action completed successfully");
     return null;
   } catch (error) {
     console.error("Like action error:", error);
@@ -1076,6 +1316,36 @@ const route7 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProper
   action: action$1,
   default: LikeAction
 }, Symbol.toStringTag, { value: "Module" }));
+const tweetWithAuthorAndLikesSchema = z.object({
+  id: z.string().uuid(),
+  content: z.string().min(1).max(140),
+  createdAt: z.coerce.date(),
+  // Coerce string to Date
+  author: z.object({
+    id: z.string().uuid(),
+    username: z.string().min(1)
+  }),
+  likeCount: z.number().int().min(0),
+  isLikedByUser: z.boolean()
+});
+const getUserTweetsResponseSchema = z.object({
+  tweets: z.array(tweetWithAuthorAndLikesSchema)
+});
+async function fetchTweetsByUsername(username) {
+  const response = await fetch(getApiUrl(`/api/tweets/user/${username}`), {
+    credentials: "include"
+    // Include authentication cookie
+  });
+  if (!response.ok) {
+    if (response.status === 404) {
+      return [];
+    }
+    throw new Error(`Failed to fetch tweets: ${response.statusText}`);
+  }
+  const data = await response.json();
+  const validated = getUserTweetsResponseSchema.parse(data);
+  return validated.tweets;
+}
 async function loader$1({
   request,
   params
@@ -1091,7 +1361,7 @@ async function loader$1({
   }
   const cookie = request.headers.get("Cookie") || "";
   try {
-    const response = await fetch(`http://localhost:3000/api/profiles/${username}`, {
+    const response = await fetch(getApiUrl(`/api/profiles/${username}`), {
       headers: {
         "Cookie": cookie
       }
@@ -1110,7 +1380,7 @@ async function loader$1({
     let currentUserId = null;
     let isOwnProfile = false;
     try {
-      const meResponse = await fetch("http://localhost:3000/api/auth/me", {
+      const meResponse = await fetch(getApiUrl("/api/auth/me"), {
         headers: {
           "Cookie": cookie
         }
@@ -1122,12 +1392,18 @@ async function loader$1({
       }
     } catch {
     }
+    const tweets = await fetchTweetsByUsername(username);
     return {
       profile: data.profile,
       isOwnProfile,
-      currentUserId
+      currentUserId,
+      tweets
+      // NEW: Include tweets in loader data
     };
   } catch (error) {
+    if (error instanceof Response) {
+      throw error;
+    }
     console.error("Profile loader error:", error);
     throw new Response("Failed to load profile", {
       status: 500
@@ -1137,8 +1413,12 @@ async function loader$1({
 const Profile = UNSAFE_withComponentProps(function Profile2() {
   const {
     profile,
-    isOwnProfile
+    isOwnProfile,
+    currentUserId,
+    tweets
   } = useLoaderData();
+  const navigation = useNavigation();
+  const isLoading = navigation.state === "loading";
   return /* @__PURE__ */ jsx("div", {
     className: "min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8",
     children: /* @__PURE__ */ jsxs("div", {
@@ -1196,6 +1476,61 @@ const Profile = UNSAFE_withComponentProps(function Profile2() {
             })
           })]
         })]
+      }), /* @__PURE__ */ jsxs("section", {
+        className: "mt-8",
+        "aria-labelledby": "user-tweets-heading",
+        children: [/* @__PURE__ */ jsx("h2", {
+          id: "user-tweets-heading",
+          className: "text-2xl font-bold text-gray-900 mb-4",
+          children: "Tweets"
+        }), isLoading ? (
+          // Loading state
+          /* @__PURE__ */ jsx("div", {
+            className: "flex justify-center py-12",
+            children: /* @__PURE__ */ jsx("div", {
+              className: "animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"
+            })
+          })
+        ) : tweets.length === 0 ? (
+          // Empty state - Enhanced for Feature 909
+          /* @__PURE__ */ jsxs("div", {
+            className: "bg-white rounded-lg shadow-md p-12 text-center",
+            role: "status",
+            "aria-live": "polite",
+            children: [/* @__PURE__ */ jsx("div", {
+              className: "mb-4 flex justify-center",
+              children: /* @__PURE__ */ jsx("svg", {
+                className: "w-16 h-16 text-gray-300",
+                fill: "none",
+                stroke: "currentColor",
+                viewBox: "0 0 24 24",
+                xmlns: "http://www.w3.org/2000/svg",
+                "aria-hidden": "true",
+                children: /* @__PURE__ */ jsx("path", {
+                  strokeLinecap: "round",
+                  strokeLinejoin: "round",
+                  strokeWidth: 1.5,
+                  d: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                })
+              })
+            }), /* @__PURE__ */ jsx("h3", {
+              className: "text-lg font-semibold text-gray-900 mb-2",
+              children: "No tweets yet"
+            }), /* @__PURE__ */ jsx("p", {
+              className: "text-gray-500 max-w-sm mx-auto",
+              children: isOwnProfile ? "You haven't posted any tweets yet. Share your first thought with the world!" : `@${profile.username} hasn't posted any tweets yet.`
+            })]
+          })
+        ) : (
+          // Tweets list - Feature: 910 - Pass currentUserId for delete button
+          /* @__PURE__ */ jsx("div", {
+            className: "space-y-4",
+            children: tweets.map((tweet) => /* @__PURE__ */ jsx(TweetCard, {
+              tweet,
+              currentUserId: currentUserId || void 0
+            }, tweet.id))
+          })
+        )]
       }), /* @__PURE__ */ jsx("div", {
         className: "mt-6",
         children: /* @__PURE__ */ jsx(Link, {
@@ -1242,7 +1577,7 @@ async function loader({
   }
   const cookie = request.headers.get("Cookie") || "";
   try {
-    const response = await fetch(`http://localhost:3000/api/profiles/${username}`, {
+    const response = await fetch(getApiUrl(`/api/profiles/${username}`), {
       headers: {
         "Cookie": cookie
       }
@@ -1254,7 +1589,7 @@ async function loader({
     }
     const data = await response.json();
     try {
-      const meResponse = await fetch("http://localhost:3000/api/auth/me", {
+      const meResponse = await fetch(getApiUrl("/api/auth/me"), {
         headers: {
           "Cookie": cookie
         }
@@ -1311,7 +1646,7 @@ async function action({
   }
   const cookie = request.headers.get("Cookie") || "";
   try {
-    const response = await fetch(`http://localhost:3000/api/profiles/${username}`, {
+    const response = await fetch(getApiUrl(`/api/profiles/${username}`), {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -1450,7 +1785,7 @@ const route9 = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProper
   loader,
   meta
 }, Symbol.toStringTag, { value: "Module" }));
-const serverManifest = { "entry": { "module": "/assets/entry.client-DhkdW83t.js", "imports": ["/assets/jsx-runtime-PRZyEUFp.js", "/assets/chunk-OIYGIGL5-8fxVktC9.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": true, "module": "/assets/root-RTeLl77S.js", "imports": ["/assets/jsx-runtime-PRZyEUFp.js", "/assets/chunk-OIYGIGL5-8fxVktC9.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "pages/Landing": { "id": "pages/Landing", "parentId": "root", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/Landing-DpXg4AM_.js", "imports": ["/assets/chunk-OIYGIGL5-8fxVktC9.js", "/assets/jsx-runtime-PRZyEUFp.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "pages/Signup": { "id": "pages/Signup", "parentId": "root", "path": "/signup", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/Signup-BJnjtrLy.js", "imports": ["/assets/chunk-OIYGIGL5-8fxVktC9.js", "/assets/jsx-runtime-PRZyEUFp.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "pages/Signin": { "id": "pages/Signin", "parentId": "root", "path": "/signin", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/Signin-DxB296Us.js", "imports": ["/assets/chunk-OIYGIGL5-8fxVktC9.js", "/assets/jsx-runtime-PRZyEUFp.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "pages/Signout": { "id": "pages/Signout", "parentId": "root", "path": "/signout", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/Signout-Vext0CZj.js", "imports": ["/assets/chunk-OIYGIGL5-8fxVktC9.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "pages/Feed": { "id": "pages/Feed", "parentId": "root", "path": "/feed", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/Feed-MHaNPKEk.js", "imports": ["/assets/chunk-OIYGIGL5-8fxVktC9.js", "/assets/jsx-runtime-PRZyEUFp.js", "/assets/TweetCard-CO9aZ8gV.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "pages/TweetDetail": { "id": "pages/TweetDetail", "parentId": "root", "path": "/tweets/:id", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/TweetDetail-rm9R6Nb3.js", "imports": ["/assets/chunk-OIYGIGL5-8fxVktC9.js", "/assets/jsx-runtime-PRZyEUFp.js", "/assets/TweetCard-CO9aZ8gV.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "pages/LikeAction": { "id": "pages/LikeAction", "parentId": "root", "path": "/tweets/:id/like", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/LikeAction-C2aRhOw6.js", "imports": ["/assets/chunk-OIYGIGL5-8fxVktC9.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "pages/Profile": { "id": "pages/Profile", "parentId": "root", "path": "/profile/:username", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/Profile-CxWX-gol.js", "imports": ["/assets/chunk-OIYGIGL5-8fxVktC9.js", "/assets/jsx-runtime-PRZyEUFp.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "pages/ProfileEdit": { "id": "pages/ProfileEdit", "parentId": "root", "path": "/profile/:username/edit", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/ProfileEdit-CM4HGJfn.js", "imports": ["/assets/chunk-OIYGIGL5-8fxVktC9.js", "/assets/jsx-runtime-PRZyEUFp.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 } }, "url": "/assets/manifest-a91c1b27.js", "version": "a91c1b27", "sri": void 0 };
+const serverManifest = { "entry": { "module": "/assets/entry.client-CwfMkriG.js", "imports": ["/assets/jsx-runtime-DFKfvEBC.js", "/assets/chunk-OIYGIGL5-DmD0wY_A.js", "/assets/index-Bc3PYlUX.js"], "css": [] }, "routes": { "root": { "id": "root", "parentId": void 0, "path": "", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": true, "module": "/assets/root-uAYn2-x8.js", "imports": ["/assets/jsx-runtime-DFKfvEBC.js", "/assets/chunk-OIYGIGL5-DmD0wY_A.js", "/assets/index-Bc3PYlUX.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "pages/Landing": { "id": "pages/Landing", "parentId": "root", "path": void 0, "index": true, "caseSensitive": void 0, "hasAction": false, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/Landing-BuWtS3T2.js", "imports": ["/assets/chunk-OIYGIGL5-DmD0wY_A.js", "/assets/jsx-runtime-DFKfvEBC.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "pages/Signup": { "id": "pages/Signup", "parentId": "root", "path": "/signup", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/Signup-DvF6RTh5.js", "imports": ["/assets/chunk-OIYGIGL5-DmD0wY_A.js", "/assets/jsx-runtime-DFKfvEBC.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "pages/Signin": { "id": "pages/Signin", "parentId": "root", "path": "/signin", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/Signin-CuhImZWp.js", "imports": ["/assets/chunk-OIYGIGL5-DmD0wY_A.js", "/assets/jsx-runtime-DFKfvEBC.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "pages/Signout": { "id": "pages/Signout", "parentId": "root", "path": "/signout", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/Signout-D69NYZ3J.js", "imports": ["/assets/chunk-OIYGIGL5-DmD0wY_A.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "pages/Feed": { "id": "pages/Feed", "parentId": "root", "path": "/feed", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/Feed-_oqwM3fH.js", "imports": ["/assets/chunk-OIYGIGL5-DmD0wY_A.js", "/assets/jsx-runtime-DFKfvEBC.js", "/assets/TweetCard-YIXopdUb.js", "/assets/index-Bc3PYlUX.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "pages/TweetDetail": { "id": "pages/TweetDetail", "parentId": "root", "path": "/tweets/:id", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/TweetDetail-DQWkqTtW.js", "imports": ["/assets/chunk-OIYGIGL5-DmD0wY_A.js", "/assets/jsx-runtime-DFKfvEBC.js", "/assets/TweetCard-YIXopdUb.js", "/assets/index-Bc3PYlUX.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "pages/LikeAction": { "id": "pages/LikeAction", "parentId": "root", "path": "/tweets/:id/like", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": false, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/LikeAction-D1lsXvuD.js", "imports": ["/assets/chunk-OIYGIGL5-DmD0wY_A.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "pages/Profile": { "id": "pages/Profile", "parentId": "root", "path": "/profile/:username", "index": void 0, "caseSensitive": void 0, "hasAction": false, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/Profile-Cxb-ZjPk.js", "imports": ["/assets/chunk-OIYGIGL5-DmD0wY_A.js", "/assets/jsx-runtime-DFKfvEBC.js", "/assets/TweetCard-YIXopdUb.js", "/assets/index-Bc3PYlUX.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 }, "pages/ProfileEdit": { "id": "pages/ProfileEdit", "parentId": "root", "path": "/profile/:username/edit", "index": void 0, "caseSensitive": void 0, "hasAction": true, "hasLoader": true, "hasClientAction": false, "hasClientLoader": false, "hasClientMiddleware": false, "hasErrorBoundary": false, "module": "/assets/ProfileEdit-CvtLyQ7i.js", "imports": ["/assets/chunk-OIYGIGL5-DmD0wY_A.js", "/assets/jsx-runtime-DFKfvEBC.js"], "css": [], "clientActionModule": void 0, "clientLoaderModule": void 0, "clientMiddlewareModule": void 0, "hydrateFallbackModule": void 0 } }, "url": "/assets/manifest-bfb21b77.js", "version": "bfb21b77", "sri": void 0 };
 const assetsBuildDirectory = "build/client";
 const basename = "/";
 const future = { "v8_middleware": false, "unstable_optimizeDeps": false, "unstable_splitRouteModules": false, "unstable_subResourceIntegrity": false, "unstable_viteEnvironmentApi": false };

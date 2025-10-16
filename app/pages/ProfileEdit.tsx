@@ -9,8 +9,11 @@ import { useLoaderData, Form, useActionData, useNavigation, Link } from 'react-r
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { redirect } from 'react-router';
 import { z } from 'zod';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getApiUrl } from '../utils/api';
+import ImageUploadField from '../components/ImageUploadField';
+import { validateImageFile } from '../utils/fileValidation';
+import { createImagePreview, revokeImagePreview } from '../utils/imagePreview';
 
 interface ProfileEditData {
   profile: {
@@ -103,6 +106,35 @@ export async function action({ request, params }: ActionFunctionArgs) {
   }
 
   const formData = await request.formData();
+  const contentType = request.headers.get('Content-Type') || '';
+  const cookie = request.headers.get('Cookie') || '';
+
+  // Check if this is a file upload (multipart/form-data)
+  if (contentType.includes('multipart/form-data')) {
+    try {
+      // Submit to avatar upload endpoint
+      const response = await fetch(getApiUrl('/api/profiles/avatar'), {
+        method: 'POST',
+        headers: {
+          'Cookie': cookie,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return { error: errorData.error || 'Failed to upload avatar' };
+      }
+
+      // Redirect on success
+      return redirect(`/profile/${username}`);
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+      return { error: 'Network error. Please try again.' };
+    }
+  }
+
+  // Original URL/bio update flow
   const bio = formData.get('bio') as string;
   const avatarUrl = formData.get('avatarUrl') as string;
 
@@ -115,8 +147,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
       fieldErrors: result.error.flatten().fieldErrors,
     };
   }
-
-  const cookie = request.headers.get('Cookie') || '';
 
   try {
     // Update profile
@@ -150,6 +180,47 @@ export default function ProfileEdit() {
 
   const [bioLength, setBioLength] = useState((profile.bio || '').length);
 
+  // File upload state
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploadMethod, setUploadMethod] = useState<'file' | 'url'>('url');
+  const [fileError, setFileError] = useState<string | null>(null);
+
+  // Handle file selection
+  const handleFileSelect = (file: File | null) => {
+    if (!file) {
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      setFileError(null);
+      return;
+    }
+
+    // Validate file
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      setFileError(validation.error || 'Invalid file');
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      return;
+    }
+
+    // Generate preview
+    const preview = createImagePreview(file);
+    setPreviewUrl(preview);
+    setSelectedFile(file);
+    setFileError(null);
+    setUploadMethod('file');
+  };
+
+  // Cleanup blob URLs on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        revokeImagePreview(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-2xl mx-auto">
@@ -163,13 +234,33 @@ export default function ProfileEdit() {
 
         {/* Edit Form */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <Form method="post">
+          <Form method="post" encType={uploadMethod === 'file' ? 'multipart/form-data' : undefined}>
             {/* Error Message */}
             {actionData?.error && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
                 <p className="text-sm text-red-800">{actionData.error}</p>
               </div>
             )}
+
+            {/* File Upload Field */}
+            <div className="mb-6">
+              <ImageUploadField
+                currentAvatarUrl={profile.avatarUrl}
+                onFileSelect={handleFileSelect}
+                previewUrl={previewUrl}
+                error={fileError}
+              />
+            </div>
+
+            {/* OR Divider */}
+            <div className="relative mb-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">OR</span>
+              </div>
+            </div>
 
             {/* Bio Field */}
             <div className="mb-6">
@@ -233,10 +324,17 @@ export default function ProfileEdit() {
             <div className="flex items-center space-x-4">
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !!fileError}
                 className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? 'Saving...' : 'Save Changes'}
+                {isSubmitting ? (
+                  <>
+                    <span className="inline-block animate-spin mr-2">⏳</span>
+                    {uploadMethod === 'file' ? 'Uploading...' : 'Saving...'}
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
               </button>
 
               <Link
@@ -246,6 +344,13 @@ export default function ProfileEdit() {
                 Cancel
               </Link>
             </div>
+
+            {/* Screen reader announcement */}
+            {isSubmitting && (
+              <div aria-live="polite" className="sr-only">
+                {uploadMethod === 'file' ? 'Uploading avatar image...' : 'Saving profile changes...'}
+              </div>
+            )}
           </Form>
         </div>
       </div>

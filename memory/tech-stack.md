@@ -1,7 +1,7 @@
 # Tweeter Tech Stack
 
-**Version:** 1.0.0
-**Last Updated:** 2025-10-12
+**Version:** 1.2.0
+**Last Updated:** 2025-10-16
 **Status:** Active
 
 ---
@@ -77,6 +77,22 @@ This document defines the APPROVED technology stack for the Tweeter project. All
   - Purpose: Image upload, storage, and CDN
   - Context: User avatar uploads
   - Rationale: External storage, automatic optimization, reliable CDN
+- ✅ **cloudinary npm package v2.x**
+  - Purpose: Official Cloudinary SDK for server-side uploads
+  - Context: Upload files to Cloudinary from Express backend
+  - Rationale: Official SDK, secure signed uploads, TypeScript support
+  <!-- Auto-added: Feature 914, 2025-10-16 -->
+
+### File Upload
+- ✅ **multer v1.4.x**
+  - Purpose: Multipart form data parsing middleware for Express
+  - Context: Handle file uploads in POST /api/profiles/avatar endpoint
+  - Rationale: Industry-standard Express middleware, functional API, memory/disk storage options
+  <!-- Auto-added: Feature 914, 2025-10-16 -->
+- ✅ **@types/multer v1.4.x**
+  - Purpose: TypeScript type definitions for multer
+  - Context: Type safety for file upload handling
+  <!-- Auto-added: Feature 914, 2025-10-16 -->
 
 ---
 
@@ -154,6 +170,8 @@ This document defines the APPROVED technology stack for the Tweeter project. All
 | Version | Date       | Change                                    | Reason                        |
 |---------|------------|-------------------------------------------|-------------------------------|
 | 1.0.0   | 2025-10-12 | Initial tech stack definition             | First feature (001-auth)      |
+| 1.1.0   | 2025-10-16 | Added multer, @types/multer               | Feature 914 (avatar upload)   |
+| 1.2.0   | 2025-10-16 | Added cloudinary npm package              | Feature 914 (avatar upload)   |
 
 ---
 
