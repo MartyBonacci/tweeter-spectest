@@ -193,3 +193,31 @@ export async function getUserTweetsWithLikes(
 
   return rows.map(mapTweetWithAuthorAndLikesRow);
 }
+
+/**
+ * Delete a tweet owned by the authenticated user
+ * Feature: 910-allow-the-logged-in-user-to-delete-their-own-tweets
+ *
+ * @param db - PostgreSQL connection
+ * @param tweetId - UUID of tweet to delete
+ * @param userId - UUID of authenticated user (owner)
+ * @returns true if deleted, false if not found or not owned
+ * @throws Error if database operation fails
+ *
+ * Security: Ownership check and deletion in single atomic query (prevents TOCTOU)
+ * Cascade: Associated likes are automatically deleted via FK constraint
+ */
+export async function deleteTweet(
+  db: Sql,
+  tweetId: string,
+  userId: string
+): Promise<boolean> {
+  const result = await db`
+    DELETE FROM tweets
+    WHERE id = ${tweetId}
+      AND profile_id = ${userId}
+    RETURNING id
+  `;
+
+  return result.length > 0;
+}

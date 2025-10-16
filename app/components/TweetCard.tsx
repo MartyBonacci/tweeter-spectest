@@ -1,15 +1,25 @@
 import { Link, useNavigate } from 'react-router';
+import { useState } from 'react';
 import { formatTimestamp, formatTimestampFull } from '../../src/utils/formatTimestamp';
 import type { TweetWithAuthorAndLikes } from '../../src/types/tweet';
 import { LikeButton } from './LikeButton';
+import { DeleteButton } from './DeleteButton';
 
 /**
  * Single tweet display card
  * Shows tweet content, author, timestamp, and like button
+ * Feature: 910 - Added delete button for own tweets
  * Uses onClick for card navigation to avoid nested anchor tags
  */
-export function TweetCard({ tweet }: { tweet: TweetWithAuthorAndLikes }) {
+export function TweetCard({
+  tweet,
+  currentUserId
+}: {
+  tweet: TweetWithAuthorAndLikes;
+  currentUserId?: string;
+}) {
   const navigate = useNavigate();
+  const [isOptimisticallyDeleted, setIsOptimisticallyDeleted] = useState(false);
 
   const handleCardClick = () => {
     navigate(`/tweets/${tweet.id}`);
@@ -19,6 +29,16 @@ export function TweetCard({ tweet }: { tweet: TweetWithAuthorAndLikes }) {
     e.stopPropagation(); // Prevent card click from firing
     // Link will handle navigation
   };
+
+  const handleDeleteSuccess = () => {
+    // Optimistic UI update - hide card immediately
+    setIsOptimisticallyDeleted(true);
+  };
+
+  // Hide card if optimistically deleted
+  if (isOptimisticallyDeleted) {
+    return null;
+  }
 
   return (
     <article
@@ -52,13 +72,26 @@ export function TweetCard({ tweet }: { tweet: TweetWithAuthorAndLikes }) {
         {tweet.content}
       </p>
 
-      {/* Like button */}
-      <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
-        <LikeButton
-          tweetId={tweet.id}
-          initialLikeCount={tweet.likeCount}
-          initialIsLiked={tweet.isLikedByUser}
-        />
+      {/* Actions (like button and delete button) */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+          <LikeButton
+            tweetId={tweet.id}
+            initialLikeCount={tweet.likeCount}
+            initialIsLiked={tweet.isLikedByUser}
+          />
+        </div>
+
+        {/* Delete button (only for own tweets) */}
+        {currentUserId && currentUserId === tweet.author.id && (
+          <div onClick={(e) => e.stopPropagation()}>
+            <DeleteButton
+              tweetId={tweet.id}
+              tweetContent={tweet.content}
+              onDeleteSuccess={handleDeleteSuccess}
+            />
+          </div>
+        )}
       </div>
     </article>
   );

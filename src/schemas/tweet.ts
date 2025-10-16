@@ -59,9 +59,28 @@ export const tweetWithAuthorSchema = z.object({
 export const tweetsResponseSchema = z.array(tweetWithAuthorSchema);
 
 /**
+ * Schema for deleting a tweet (path parameter validation)
+ * Feature: 910-allow-the-logged-in-user-to-delete-their-own-tweets
+ */
+export const deleteTweetParamsSchema = z.object({
+  id: z.string().uuid('Invalid tweet ID format'),
+});
+
+/**
+ * Schema for delete tweet error responses
+ * Feature: 910-allow-the-logged-in-user-to-delete-their-own-tweets
+ */
+export const deleteTweetErrorSchema = z.object({
+  error: z.string().min(1),
+  details: z.string().optional(),
+});
+
+/**
  * Inferred TypeScript types from Zod schemas
  */
 export type CreateTweetInput = z.infer<typeof createTweetSchema>;
 export type TweetResponse = z.infer<typeof tweetResponseSchema>;
 export type TweetWithAuthorResponse = z.infer<typeof tweetWithAuthorSchema>;
 export type TweetsResponse = z.infer<typeof tweetsResponseSchema>;
+export type DeleteTweetParams = z.infer<typeof deleteTweetParamsSchema>;
+export type DeleteTweetError = z.infer<typeof deleteTweetErrorSchema>;
