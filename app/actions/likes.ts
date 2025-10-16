@@ -44,7 +44,7 @@ export async function toggleLikeAction({ request, params }: ActionFunctionArgs) 
     if (action === 'like') {
       // Create like
       console.log('Calling API: POST /api/likes with tweetId:', tweetId);
-      const response = await fetch('http://localhost:3000/api/likes', {
+      const response = await fetch('/api/likes', {
         method: 'POST',
         headers,
         body: JSON.stringify({ tweetId }),
@@ -70,7 +70,7 @@ export async function toggleLikeAction({ request, params }: ActionFunctionArgs) 
     } else {
       // Delete like
       console.log('Calling API: DELETE /api/likes with tweetId:', tweetId);
-      const response = await fetch('http://localhost:3000/api/likes', {
+      const response = await fetch('/api/likes', {
         method: 'DELETE',
         headers,
         body: JSON.stringify({ tweetId }),

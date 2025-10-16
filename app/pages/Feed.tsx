@@ -17,7 +17,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const cookie = request.headers.get('Cookie') || '';
 
   try {
-    const response = await fetch('http://localhost:3000/api/tweets', {
+    const response = await fetch('/api/tweets', {
       headers: {
         'Cookie': cookie, // Forward authentication cookies to backend
       },
@@ -38,7 +38,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     // Feature: 910 - Get current user ID for delete button
     let currentUserId: string | null = null;
     try {
-      const meResponse = await fetch('http://localhost:3000/api/auth/me', {
+      const meResponse = await fetch('/api/auth/me', {
         headers: { 'Cookie': cookie },
       });
       if (meResponse.ok) {
@@ -80,7 +80,7 @@ export async function action({ request }: ActionFunctionArgs) {
   console.log('All request headers:', Array.from(request.headers.entries()));
 
   try {
-    const url = 'http://localhost:3000/api/tweets';
+    const url = '/api/tweets';
     console.log('Posting to URL:', url);
     console.log('Request body:', JSON.stringify({ content }));
 

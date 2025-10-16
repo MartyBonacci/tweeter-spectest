@@ -15,7 +15,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const cookie = request.headers.get('Cookie') || '';
 
   try {
-    const response = await fetch('http://localhost:3000/api/auth/signout', {
+    const response = await fetch('/api/auth/signout', {
       method: 'POST',
       headers: {
         'Cookie': cookie,

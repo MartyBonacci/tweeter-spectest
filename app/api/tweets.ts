@@ -46,7 +46,7 @@ const getUserTweetsResponseSchema = z.object({
 export async function fetchTweetsByUsername(
   username: string
 ): Promise<TweetWithAuthorAndLikes[]> {
-  const response = await fetch(`http://localhost:3000/api/tweets/user/${username}`, {
+  const response = await fetch(`/api/tweets/user/${username}`, {
     credentials: 'include', // Include authentication cookie
   });
 
