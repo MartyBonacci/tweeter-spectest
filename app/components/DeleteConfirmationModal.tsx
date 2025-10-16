@@ -43,6 +43,7 @@ export function DeleteConfirmationModal({
           color="failure"
           onClick={onConfirm}
           disabled={isDeleting}
+          className="bg-red-600 text-white hover:bg-red-700 focus:ring-4 focus:ring-red-300 disabled:bg-red-400"
         >
           {isDeleting ? 'Deleting...' : 'Delete'}
         </Button>
