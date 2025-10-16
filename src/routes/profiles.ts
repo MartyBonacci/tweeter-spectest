@@ -10,6 +10,11 @@ import { createDbConnection } from '../db/connection.js';
 import { getProfileWithStats, updateProfileBio } from '../db/profiles.js';
 import { updateProfileRequestSchema } from '../schemas/profile.js';
 import { loadEnv } from '../config/env.js';
+import { avatarUpload } from '../server/middleware/upload.js';
+import { serverFileSchema, avatarUploadResponseSchema } from '../server/schemas/avatarUpload.js';
+import { validateFile } from '../server/utils/fileValidation.js';
+import { uploadAvatar } from '../server/utils/cloudinaryUpload.js';
+import { updateProfileAvatar } from '../server/utils/profileUpdate.js';
 
 const router = Router();
 const { DATABASE_URL } = loadEnv();
@@ -94,6 +99,82 @@ router.put('/:username', async (req: Request, res: Response) => {
 
     console.error('Profile update error:', error);
     return res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+/**
+ * POST /api/profiles/avatar
+ * Upload avatar image to Cloudinary and update profile (requires authentication)
+ */
+router.post('/avatar', avatarUpload, async (req: Request, res: Response) => {
+  // Check authentication (added by authenticate middleware)
+  if (!req.user || !req.user.userId) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  const userId = req.user.userId;
+  const file = req.file;
+
+  // Check if file was uploaded
+  if (!file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+
+  try {
+    // Validate file with Zod schema
+    const validatedFile = serverFileSchema.parse(file);
+
+    // Additional validation: Check file magic numbers (defense against MIME type spoofing)
+    const fileValidation = validateFile({
+      mimetype: validatedFile.mimetype,
+      size: validatedFile.size,
+      buffer: validatedFile.buffer,
+    });
+
+    if (!fileValidation.valid) {
+      return res.status(400).json({ error: fileValidation.error });
+    }
+
+    // Generate unique filename for Cloudinary
+    const filename = `${userId}_${Date.now()}`;
+
+    // Upload to Cloudinary
+    const cloudinaryResult = await uploadAvatar(validatedFile.buffer, filename);
+
+    // Update profile in database
+    const updatedProfile = await updateProfileAvatar(db, userId, cloudinaryResult.secure_url);
+
+    // Validate and return response
+    const response = avatarUploadResponseSchema.parse({
+      profile: {
+        id: updatedProfile.id,
+        username: updatedProfile.username,
+        bio: updatedProfile.bio,
+        avatarUrl: updatedProfile.avatarUrl,
+      },
+    });
+
+    return res.status(200).json(response);
+  } catch (error: any) {
+    console.error('Avatar upload error:', error);
+
+    // Handle specific error types
+    if (error.name === 'ZodError') {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: error.errors,
+      });
+    }
+
+    if (error.message?.includes('Cloudinary')) {
+      return res.status(500).json({ error: 'Failed to upload image to storage' });
+    }
+
+    if (error.message === 'Profile not found') {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    return res.status(500).json({ error: 'Failed to upload avatar' });
   }
 });
 
