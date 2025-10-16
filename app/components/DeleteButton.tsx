@@ -5,8 +5,7 @@
  * Delete button with confirmation modal and optimistic UI updates
  */
 
-import { useState, useEffect } from 'react';
-import { useFetcher } from 'react-router';
+import { useState } from 'react';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 
 interface DeleteButtonProps {
@@ -18,36 +17,43 @@ interface DeleteButtonProps {
 /**
  * Delete button component with trash icon
  * Opens confirmation modal, handles optimistic UI updates
- * Uses fetcher to DELETE /api/tweets/:id
+ * Uses native fetch to DELETE /api/tweets/:id
+ * Bug 911: Fixed to use native fetch instead of useFetcher for direct API calls
  */
 export function DeleteButton({ tweetId, tweetContent, onDeleteSuccess }: DeleteButtonProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const fetcher = useFetcher();
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const isDeleting = fetcher.state === 'submitting';
+  const handleDelete = async () => {
+    setIsDeleting(true);
 
-  // Handle success/error responses
-  useEffect(() => {
-    if (fetcher.state === 'idle' && fetcher.data !== undefined) {
-      // Check if there was an error
-      if (fetcher.data && typeof fetcher.data === 'object' && 'error' in fetcher.data) {
-        // Error occurred - show error message (you'd use a toast here)
-        console.error('Delete failed:', fetcher.data.error);
-        // TODO T019: Add toast notification for errors
-      } else {
-        // Success - close modal and notify parent
+    try {
+      const response = await fetch(`/api/tweets/${tweetId}`, {
+        method: 'DELETE',
+        credentials: 'include', // Include cookies for JWT auth
+      });
+
+      if (response.ok) {
+        // Success (204 No Content)
         setIsModalOpen(false);
+        setIsDeleting(false);
         onDeleteSuccess?.();
+      } else {
+        // Error response
+        const errorData = await response.json().catch(() => ({
+          error: 'Failed to delete tweet'
+        }));
+        console.error('Delete failed:', errorData.error);
+        setIsDeleting(false);
+        // TODO T019: Add toast notification for errors
+        alert(`Error: ${errorData.error}`);
       }
+    } catch (error) {
+      console.error('Delete error:', error);
+      setIsDeleting(false);
+      // TODO T019: Add toast notification for errors
+      alert('Network error. Please try again.');
     }
-  }, [fetcher.state, fetcher.data, onDeleteSuccess]);
-
-  const handleDelete = () => {
-    // Submit DELETE request
-    fetcher.submit(null, {
-      method: 'DELETE',
-      action: `/api/tweets/${tweetId}`,
-    });
   };
 
   return (
