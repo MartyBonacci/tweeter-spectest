@@ -2,6 +2,7 @@ import { Links, Meta, Outlet, Scripts, ScrollRestoration, useLoaderData } from '
 import type { LinksFunction, LoaderFunctionArgs } from 'react-router';
 import stylesheetUrl from './globals.css?url';
 import { Navbar } from './components/Navbar';
+import { getApiUrl } from './utils/api';
 
 /**
  * Export stylesheet links for React Router
@@ -30,7 +31,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       headers['Cookie'] = cookie;
     }
 
-    const response = await fetch('/api/auth/me', {
+    const response = await fetch(getApiUrl('/api/auth/me'), {
       headers,
     });
 

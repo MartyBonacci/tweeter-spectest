@@ -8,6 +8,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { TweetComposer } from '../components/TweetComposer';
 import { TweetList } from '../components/TweetList';
 import type { TweetWithAuthorAndLikes } from '../../src/types/tweet';
+import { getApiUrl } from '../utils/api';
 
 /**
  * Feed loader - fetches all tweets for display
@@ -17,7 +18,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const cookie = request.headers.get('Cookie') || '';
 
   try {
-    const response = await fetch('/api/tweets', {
+    const response = await fetch(getApiUrl('/api/tweets'), {
       headers: {
         'Cookie': cookie, // Forward authentication cookies to backend
       },
@@ -38,7 +39,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     // Feature: 910 - Get current user ID for delete button
     let currentUserId: string | null = null;
     try {
-      const meResponse = await fetch('/api/auth/me', {
+      const meResponse = await fetch(getApiUrl('/api/auth/me'), {
         headers: { 'Cookie': cookie },
       });
       if (meResponse.ok) {
@@ -80,7 +81,7 @@ export async function action({ request }: ActionFunctionArgs) {
   console.log('All request headers:', Array.from(request.headers.entries()));
 
   try {
-    const url = '/api/tweets';
+    const url = getApiUrl('/api/tweets');
     console.log('Posting to URL:', url);
     console.log('Request body:', JSON.stringify({ content }));
 

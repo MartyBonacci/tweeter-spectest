@@ -5,6 +5,7 @@
 import { redirect } from 'react-router';
 import type { ActionFunctionArgs } from 'react-router';
 import { SigninForm } from '../components/SigninForm';
+import { getApiUrl } from '../utils/api';
 
 /**
  * Signin action - handles signin form submissions
@@ -21,7 +22,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
   try {
     // Send signin request to backend API
-    const response = await fetch('/api/auth/signin', {
+    const response = await fetch(getApiUrl('/api/auth/signin'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include', // CRITICAL: Allow cookies to be set

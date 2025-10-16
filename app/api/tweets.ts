@@ -7,6 +7,7 @@
 
 import { z } from 'zod';
 import type { TweetWithAuthorAndLikes } from '../../src/types/tweet';
+import { getApiUrl } from '../utils/api';
 
 /**
  * Zod schema for validating TweetWithAuthorAndLikes response
@@ -46,7 +47,7 @@ const getUserTweetsResponseSchema = z.object({
 export async function fetchTweetsByUsername(
   username: string
 ): Promise<TweetWithAuthorAndLikes[]> {
-  const response = await fetch(`/api/tweets/user/${username}`, {
+  const response = await fetch(getApiUrl(`/api/tweets/user/${username}`), {
     credentials: 'include', // Include authentication cookie
   });
 

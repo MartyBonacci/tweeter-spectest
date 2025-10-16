@@ -7,6 +7,7 @@
 
 import type { ActionFunctionArgs } from 'react-router';
 import { redirect } from 'react-router';
+import { getApiUrl } from '../utils/api';
 
 /**
  * Toggle like action - handles both like and unlike
@@ -44,7 +45,7 @@ export async function toggleLikeAction({ request, params }: ActionFunctionArgs) 
     if (action === 'like') {
       // Create like
       console.log('Calling API: POST /api/likes with tweetId:', tweetId);
-      const response = await fetch('/api/likes', {
+      const response = await fetch(getApiUrl('/api/likes'), {
         method: 'POST',
         headers,
         body: JSON.stringify({ tweetId }),
@@ -70,7 +71,7 @@ export async function toggleLikeAction({ request, params }: ActionFunctionArgs) 
     } else {
       // Delete like
       console.log('Calling API: DELETE /api/likes with tweetId:', tweetId);
-      const response = await fetch('/api/likes', {
+      const response = await fetch(getApiUrl('/api/likes'), {
         method: 'DELETE',
         headers,
         body: JSON.stringify({ tweetId }),

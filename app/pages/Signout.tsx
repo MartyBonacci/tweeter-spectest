@@ -7,6 +7,7 @@
 
 import type { ActionFunctionArgs } from 'react-router';
 import { redirect } from 'react-router';
+import { getApiUrl } from '../utils/api';
 
 /**
  * Signout action - calls backend to destroy session
@@ -15,7 +16,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const cookie = request.headers.get('Cookie') || '';
 
   try {
-    const response = await fetch('/api/auth/signout', {
+    const response = await fetch(getApiUrl('/api/auth/signout'), {
       method: 'POST',
       headers: {
         'Cookie': cookie,
