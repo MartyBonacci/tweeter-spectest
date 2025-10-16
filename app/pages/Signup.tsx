@@ -1,6 +1,7 @@
 import { redirect } from 'react-router';
 import type { ActionFunctionArgs } from 'react-router';
 import { SignupForm } from '../components/SignupForm';
+import { getApiUrl } from '../utils/api';
 
 /**
  * Signup page component
@@ -34,7 +35,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
   try {
     // Call backend API
-    const response = await fetch('/api/auth/signup', {
+    const response = await fetch(getApiUrl('/api/auth/signup'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

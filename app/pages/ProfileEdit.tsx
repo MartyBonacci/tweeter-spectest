@@ -10,6 +10,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { redirect } from 'react-router';
 import { z } from 'zod';
 import { useState } from 'react';
+import { getApiUrl } from '../utils/api';
 
 interface ProfileEditData {
   profile: {
@@ -50,7 +51,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
   try {
     // Fetch profile data
-    const response = await fetch(`/api/profiles/${username}`, {
+    const response = await fetch(getApiUrl(`/api/profiles/${username}`), {
       headers: {
         'Cookie': cookie,
       },
@@ -64,7 +65,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
     // Verify user is editing their own profile
     try {
-      const meResponse = await fetch('/api/auth/me', {
+      const meResponse = await fetch(getApiUrl('/api/auth/me'), {
         headers: {
           'Cookie': cookie,
         },
@@ -119,7 +120,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   try {
     // Update profile
-    const response = await fetch(`/api/profiles/${username}`, {
+    const response = await fetch(getApiUrl(`/api/profiles/${username}`), {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',

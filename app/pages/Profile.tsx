@@ -11,6 +11,7 @@ import type { LoaderFunctionArgs } from 'react-router';
 import type { TweetWithAuthorAndLikes } from '../../src/types/tweet';
 import { fetchTweetsByUsername } from '../api/tweets';
 import { TweetCard } from '../components/TweetCard';
+import { getApiUrl } from '../utils/api';
 
 interface ProfileData {
   profile: {
@@ -42,7 +43,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
   try {
     // Fetch profile data
-    const response = await fetch(`/api/profiles/${username}`, {
+    const response = await fetch(getApiUrl(`/api/profiles/${username}`), {
       headers: {
         'Cookie': cookie,
       },
@@ -62,7 +63,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     let isOwnProfile = false;
 
     try {
-      const meResponse = await fetch('/api/auth/me', {
+      const meResponse = await fetch(getApiUrl('/api/auth/me'), {
         headers: {
           'Cookie': cookie,
         },

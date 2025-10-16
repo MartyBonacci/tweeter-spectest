@@ -7,6 +7,7 @@
 
 import { redirect } from 'react-router';
 import type { ActionFunctionArgs } from 'react-router';
+import { getApiUrl } from '../utils/api';
 
 /**
  * Create tweet action
@@ -39,7 +40,7 @@ export async function createTweetAction({ request }: ActionFunctionArgs) {
 
   try {
     // Call backend API
-    const response = await fetch('/api/tweets', {
+    const response = await fetch(getApiUrl('/api/tweets'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

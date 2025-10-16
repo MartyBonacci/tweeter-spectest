@@ -7,6 +7,7 @@ import { useLoaderData } from 'react-router';
 import type { LoaderFunctionArgs } from 'react-router';
 import { TweetCard } from '../components/TweetCard';
 import type { TweetWithAuthorAndLikes } from '../../src/types/tweet';
+import { getApiUrl } from '../utils/api';
 
 /**
  * Tweet detail loader - fetches single tweet by ID
@@ -22,7 +23,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const cookie = request.headers.get('Cookie') || '';
 
   try {
-    const response = await fetch(`/api/tweets/${id}`, {
+    const response = await fetch(getApiUrl(`/api/tweets/${id}`), {
       headers: {
         'Cookie': cookie,
       },
@@ -47,7 +48,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     // Feature: 910 - Get current user ID for delete button
     let currentUserId: string | null = null;
     try {
-      const meResponse = await fetch('/api/auth/me', {
+      const meResponse = await fetch(getApiUrl('/api/auth/me'), {
         headers: { 'Cookie': cookie },
       });
       if (meResponse.ok) {
