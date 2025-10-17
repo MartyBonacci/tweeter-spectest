@@ -13,6 +13,7 @@ export default [
   route('/signup', 'pages/Signup.tsx'),
   route('/signin', 'pages/Signin.tsx'),
   route('/signout', 'pages/Signout.tsx'),
+  route('/forgot-password', 'pages/ForgotPassword.tsx'),
 
   // Protected routes (require authentication)
   route('/feed', 'pages/Feed.tsx'),

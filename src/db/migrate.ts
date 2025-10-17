@@ -107,3 +107,28 @@ export async function runMigrations(
     console.log(`✅ Applied ${appliedCount} new migrations`);
   }
 }
+
+/**
+ * Main entry point for running migrations standalone
+ * Usage: npm run migrate
+ */
+async function main(): Promise<void> {
+  const { getDb } = await import('./connection.js');
+  const { getEnv } = await import('../config/env.js');
+
+  try {
+    const env = getEnv();
+    const db = getDb(env.DATABASE_URL);
+    await runMigrations(db);
+    await db.end();
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Migration failed:', error);
+    process.exit(1);
+  }
+}
+
+// Run migrations if this file is executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main();
+}

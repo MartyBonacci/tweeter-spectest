@@ -1,6 +1,6 @@
 # Tweeter Tech Stack
 
-**Version:** 1.2.0
+**Version:** 1.3.0
 **Last Updated:** 2025-10-16
 **Status:** Active
 
@@ -94,6 +94,17 @@ This document defines the APPROVED technology stack for the Tweeter project. All
   - Context: Type safety for file upload handling
   <!-- Auto-added: Feature 914, 2025-10-16 -->
 
+### Email Services
+- ✅ **mailgun.js v10.x**
+  - Purpose: Email delivery API client for transactional emails
+  - Context: Send password reset emails, confirmation emails
+  - Rationale: Reliable delivery, free tier (5,000 emails/month), official SDK, good TypeScript support
+  <!-- Auto-added: Feature 915, 2025-10-16 -->
+- ✅ **@types/mailgun.js**
+  - Purpose: TypeScript type definitions for mailgun.js
+  - Context: Type safety for email sending operations
+  <!-- Auto-added: Feature 915, 2025-10-16 -->
+
 ---
 
 ## Prohibited Technologies
@@ -172,6 +183,7 @@ This document defines the APPROVED technology stack for the Tweeter project. All
 | 1.0.0   | 2025-10-12 | Initial tech stack definition             | First feature (001-auth)      |
 | 1.1.0   | 2025-10-16 | Added multer, @types/multer               | Feature 914 (avatar upload)   |
 | 1.2.0   | 2025-10-16 | Added cloudinary npm package              | Feature 914 (avatar upload)   |
+| 1.3.0   | 2025-10-16 | Added mailgun.js, @types/mailgun.js       | Feature 915 (password reset)  |
 
 ---
 
