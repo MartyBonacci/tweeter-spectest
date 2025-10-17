@@ -32,7 +32,7 @@ Tweeter is a simplified Twitter clone styled like the 140-character era, built w
 
 ## Data Model
 
-Three core tables with the following structure:
+Core tables with the following structure:
 
 **profiles**: id, username (unique), email (unique), password_hash (argon2), bio (optional, max 160 chars), avatar_url (optional, Cloudinary), created_at
 
@@ -40,9 +40,13 @@ Three core tables with the following structure:
 
 **likes**: id, tweet_id (FK), profile_id (FK), created_at, with unique constraint on (tweet_id, profile_id)
 
+**password_reset_tokens**: id, profile_id (FK), token_hash (SHA-256), expires_at (1 hour), used_at (nullable), created_at
+
+**password_reset_rate_limits**: id, email, requested_at (for rate limiting: 3 requests/hour per email)
+
 ## API Endpoints
 
-Authentication: POST /api/auth/{signup,signin,signout}
+Authentication: POST /api/auth/{signup,signin,signout}, POST /api/auth/forgot-password, GET /api/auth/verify-reset-token/:token, POST /api/auth/reset-password, GET /api/auth/me
 Tweets: GET /api/tweets, GET /api/tweets/:id, POST /api/tweets, GET /api/tweets/user/:username
 Likes: POST /api/likes, DELETE /api/likes/:id
 Profiles: GET /api/profiles/:username, PUT /api/profiles/:username, POST /api/profiles/avatar
@@ -53,9 +57,13 @@ Defined in app/routes.ts using RouteConfig array:
 - / (Landing)
 - /signup (Signup)
 - /signin (Signin)
+- /signout (Signout)
+- /forgot-password (Request password reset)
+- /reset-password/:token (Complete password reset)
 - /feed (Feed)
 - /profile/:username (Profile)
-- /settings (Settings)
+- /profile/:username/edit (Edit Profile)
+- /tweets/:id (Tweet Detail)
 
 ## Tech Stack Details
 
@@ -68,6 +76,8 @@ Defined in app/routes.ts using RouteConfig array:
 **Security**: @node-rs/argon2 for password hashing
 
 **Storage**: Cloudinary for profile avatars
+
+**Email**: Mailgun for transactional emails (password reset, confirmations)
 
 ## Development Context
 

@@ -12,7 +12,8 @@
     "start:server": "node dist/server/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
-    "migrate": "tsx src/db/migrate.ts"
+    "migrate": "tsx src/db/migrate.ts",
+    "cleanup:tokens": "tsx src/server/jobs/cleanup-password-reset-tokens.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "^1.8.3",
@@ -32,6 +33,7 @@
     "flowbite-react": "^0.10.1",
     "isbot": "^5",
     "jsonwebtoken": "^9.0.2",
+    "mailgun.js": "^12.1.1",
     "multer": "^2.0.2",
     "postgres": "^3.4.4",
     "react": "^18.3.1",

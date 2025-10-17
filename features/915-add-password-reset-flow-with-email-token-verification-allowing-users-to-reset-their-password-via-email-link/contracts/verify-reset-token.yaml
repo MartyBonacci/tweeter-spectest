@@ -1,0 +1,104 @@
+openapi: 3.0.0
+info:
+  title: Verify Reset Token API
+  version: 1.0.0
+  description: API endpoint for validating password reset tokens
+
+paths:
+  /api/auth/verify-reset-token/{token}:
+    get:
+      summary: Verify password reset token
+      description: |
+        Validates a password reset token before showing the password reset form.
+        Used by React Router loader to determine if token is valid.
+
+      tags:
+        - Authentication
+
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: Password reset token (UUID v7 format)
+          schema:
+            type: string
+            format: uuid
+            example: "018c2e65-ec97-7c5d-9e18-5c24a4d7c8e9"
+
+      responses:
+        '200':
+          description: Token validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - valid
+                properties:
+                  valid:
+                    type: boolean
+                    description: Whether token is valid
+                  email:
+                    type: string
+                    format: email
+                    description: User's email (only included if valid=true)
+                    example: "user@example.com"
+
+              examples:
+                validToken:
+                  summary: Valid, unexpired, unused token
+                  value:
+                    valid: true
+                    email: "user@example.com"
+
+                expiredToken:
+                  summary: Expired token
+                  value:
+                    valid: false
+
+                usedToken:
+                  summary: Already used token
+                  value:
+                    valid: false
+
+                notFoundToken:
+                  summary: Token not found in database
+                  value:
+                    valid: false
+
+        '404':
+          description: Token not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Invalid or expired reset token"
+
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Failed to verify reset token"
+
+      security: []  # Public endpoint (token itself is the credential)
+
+components:
+  schemas:
+    TokenValidationResponse:
+      type: object
+      required:
+        - valid
+      properties:
+        valid:
+          type: boolean
+        email:
+          type: string
+          format: email
