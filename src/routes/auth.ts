@@ -222,7 +222,17 @@ export function createAuthRouter(
         const tokenHash = hashToken(token);
         const expiresAt = getTokenExpirationTime();
 
-        // Store token in database
+        // Invalidate any existing tokens for this user (Bug 916 fix)
+        // This ensures only 1 active token per user at any time
+        // Prevents "already used" error when old tokens exist
+        const deletedTokens = await db`
+          DELETE FROM password_reset_tokens
+          WHERE profile_id = ${user.id}
+          RETURNING id
+        `;
+        console.log(`🧹 Cleaned up ${deletedTokens.count} old tokens for user ${user.id}`);
+
+        // Store new token in database
         await db`
           INSERT INTO password_reset_tokens (profile_id, token_hash, expires_at)
           VALUES (${user.id}, ${tokenHash}, ${expiresAt})
