@@ -34,10 +34,16 @@ export async function loader({ params }: LoaderFunctionArgs) {
 
   try {
     // Verify token with backend API
+    // IMPORTANT: Add cache-busting headers to prevent stale "already used" errors
     const response = await fetch(getApiUrl(`/api/auth/verify-reset-token/${token}`), {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+      },
       credentials: 'include',
+      cache: 'no-store', // Force fresh verification every time
     });
 
     const data: TokenValidationData = await response.json();
