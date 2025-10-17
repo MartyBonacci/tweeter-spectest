@@ -12,7 +12,8 @@
     "start:server": "node dist/server/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
-    "migrate": "tsx src/db/migrate.ts"
+    "migrate": "tsx src/db/migrate.ts",
+    "cleanup:tokens": "tsx src/server/jobs/cleanup-password-reset-tokens.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "^1.8.3",
