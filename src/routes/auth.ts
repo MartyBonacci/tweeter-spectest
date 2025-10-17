@@ -313,7 +313,7 @@ export function createAuthRouter(
       }
 
       // Check if token is expired
-      if (isTokenExpired(result.expires_at)) {
+      if (isTokenExpired(result.expiresAt)) {
         return res.status(410).json({
           error: 'Token has expired',
           valid: false,
@@ -322,7 +322,7 @@ export function createAuthRouter(
       }
 
       // Check if token is already used
-      if (isTokenUsed(result.used_at)) {
+      if (isTokenUsed(result.usedAt)) {
         return res.status(410).json({
           error: 'Token has already been used',
           valid: false,
@@ -387,14 +387,14 @@ export function createAuthRouter(
       }
 
       // Check if token is expired
-      if (isTokenExpired(tokenRecord.expires_at)) {
+      if (isTokenExpired(tokenRecord.expiresAt)) {
         return res.status(410).json({
           error: 'Token has expired',
         });
       }
 
       // Check if token is already used
-      if (isTokenUsed(tokenRecord.used_at)) {
+      if (isTokenUsed(tokenRecord.usedAt)) {
         return res.status(410).json({
           error: 'Token has already been used',
         });
@@ -407,19 +407,19 @@ export function createAuthRouter(
       await db`
         UPDATE profiles
         SET password_hash = ${passwordHash}
-        WHERE id = ${tokenRecord.user_id}
+        WHERE id = ${tokenRecord.userId}
       `;
 
       // Mark token as used
       await db`
         UPDATE password_reset_tokens
         SET used_at = NOW()
-        WHERE id = ${tokenRecord.token_id}
+        WHERE id = ${tokenRecord.tokenId}
       `;
 
       // Create session for user (automatically sign in)
       const { cookie } = createSession(
-        tokenRecord.user_id,
+        tokenRecord.userId,
         jwtSecret,
         cookieDomain,
         isProduction
@@ -498,7 +498,7 @@ export function createAuthRouter(
           username: user.username,
           email: user.email,
           bio: user.bio,
-          avatarUrl: user.avatar_url,
+          avatarUrl: user.avatarUrl,
         },
       });
     } catch (error) {
