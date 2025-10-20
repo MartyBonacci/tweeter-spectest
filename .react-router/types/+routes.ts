@@ -23,6 +23,14 @@ type Pages = {
   "/signout": {
     params: {};
   };
+  "/forgot-password": {
+    params: {};
+  };
+  "/reset-password/:token": {
+    params: {
+      "token": string;
+    };
+  };
   "/feed": {
     params: {};
   };
@@ -51,7 +59,7 @@ type Pages = {
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/signup" | "/signin" | "/signout" | "/feed" | "/tweets/:id" | "/tweets/:id/like" | "/profile/:username" | "/profile/:username/edit";
+    page: "/" | "/signup" | "/signin" | "/signout" | "/forgot-password" | "/reset-password/:token" | "/feed" | "/tweets/:id" | "/tweets/:id/like" | "/profile/:username" | "/profile/:username/edit";
   };
   "pages/Landing.tsx": {
     id: "pages/Landing";
@@ -68,6 +76,14 @@ type RouteFiles = {
   "pages/Signout.tsx": {
     id: "pages/Signout";
     page: "/signout";
+  };
+  "pages/ForgotPassword.tsx": {
+    id: "pages/ForgotPassword";
+    page: "/forgot-password";
+  };
+  "pages/ResetPassword.tsx": {
+    id: "pages/ResetPassword";
+    page: "/reset-password/:token";
   };
   "pages/Feed.tsx": {
     id: "pages/Feed";
@@ -97,6 +113,8 @@ type RouteModules = {
   "pages/Signup": typeof import("./app/pages/Signup.tsx");
   "pages/Signin": typeof import("./app/pages/Signin.tsx");
   "pages/Signout": typeof import("./app/pages/Signout.tsx");
+  "pages/ForgotPassword": typeof import("./app/pages/ForgotPassword.tsx");
+  "pages/ResetPassword": typeof import("./app/pages/ResetPassword.tsx");
   "pages/Feed": typeof import("./app/pages/Feed.tsx");
   "pages/TweetDetail": typeof import("./app/pages/TweetDetail.tsx");
   "pages/LikeAction": typeof import("./app/pages/LikeAction.tsx");
